@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Model } from "mongoose";
+import mongoose, { Schema, Document, Model, CallbackWithoutResultAndOptionalError  } from "mongoose";
 
 export interface ISettlement extends Document {
   groupId: mongoose.Types.ObjectId;
@@ -44,15 +44,6 @@ const SettlementSchema = new mongoose.Schema<ISettlement>(
   },
   { timestamps: true }
 );
-
-// Prevent self-settlement
-SettlementSchema.pre<ISettlement>("validate", function (next) {
-  if (this.fromUser.toString() === this.toUser.toString()) {
-    return next(new Error("Self-settlement is not allowed"));
-  }
-  next();
-});
-
 const Settlement: Model<ISettlement> =
   mongoose.models.Settlement ||
   mongoose.model<ISettlement>("Settlement", SettlementSchema);
