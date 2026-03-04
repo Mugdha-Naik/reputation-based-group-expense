@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Model, CallbackWithoutResultAndOptionalError  } from "mongoose";
+import mongoose, { Document, Model } from "mongoose";
 
 export interface ISettlement extends Document {
   groupId: mongoose.Types.ObjectId;
@@ -31,7 +31,7 @@ const SettlementSchema = new mongoose.Schema<ISettlement>(
     amount: {
       type: Number,
       required: true,
-      min: 1,
+      min: 0.01,
     },
     status: {
       type: String,

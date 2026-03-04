@@ -33,13 +33,13 @@ export async function GET(
     }
 
     const settlements = await Settlement.find({ groupId })
-      .populate("fromUser", "name")
-      .populate("toUser", "name")
+      .populate("fromUser", "name upiId")
+      .populate("toUser", "name upiId")
       .sort({ createdAt: -1 });
 
     return NextResponse.json(settlements, { status: 200 });
 
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { message: "Failed to fetch settlements" },
       { status: 500 }

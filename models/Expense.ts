@@ -6,6 +6,9 @@ interface IExpense {
   amount: number;
   paidBy: string;
   splitAmong: string[];
+  participants?: string[];
+  paymentMethod?: "UPI" | "Cash";
+  billImage?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -41,6 +44,17 @@ const expenseSchema = new mongoose.Schema<IExpense>(
         validator: (value: string[]) => Array.isArray(value) && value.length > 0,
         message: "splitAmong must contain at least one member id",
       },
+    },
+    participants: {
+      type: [String],
+      default: undefined,
+    },
+    paymentMethod: {
+      type: String,
+      enum: ["UPI", "Cash"],
+    },
+    billImage: {
+      type: String,
     },
   },
   { timestamps: true }

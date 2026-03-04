@@ -18,6 +18,7 @@ export default function TripPage() {
 
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
 
   async function fetchSettlements() {
     try {
@@ -59,6 +60,29 @@ export default function TripPage() {
     }
   }
 
+  async function generateSettlementsForGroup() {
+    if (!groupId) return;
+
+    try {
+      setGenerating(true);
+      const res = await fetch(`/api/settlement/generate/${groupId}`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        console.error("Failed to generate settlements");
+        return;
+      }
+
+      await fetchSettlements();
+    } catch (err) {
+      console.error("Error generating settlements:", err);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   useEffect(() => {
     if (groupId) {
       fetchSettlements();
@@ -69,7 +93,17 @@ export default function TripPage() {
 
   return (
     <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">Settlement History</h2>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-xl font-bold">Settlement History</h2>
+        <button
+          type="button"
+          onClick={generateSettlementsForGroup}
+          disabled={generating || !groupId}
+          className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {generating ? "Generating..." : "Generate Settlements"}
+        </button>
+      </div>
 
       <SettlementList settlements={settlements} onMarkPaid={markPaid} />
     </div>

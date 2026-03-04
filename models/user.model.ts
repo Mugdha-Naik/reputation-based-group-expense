@@ -5,6 +5,7 @@ interface Iuser {
     name: string,
     image?: string,
     email: string,
+    upiId?: string,
     password: string,
     createdAt?: Date,
     updatedAt?: Date,
@@ -25,6 +26,10 @@ const userSchema = new mongoose.Schema<Iuser>({
         type: String,
         required: true,
         unique: true
+    },
+    upiId: {
+        type: String,
+        trim: true,
     },
     image: {
         type: String   
