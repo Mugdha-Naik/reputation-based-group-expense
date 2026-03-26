@@ -3,8 +3,10 @@ import mongoose from "mongoose"
 import connectDB from "@/lib/db"
 import Settlement from "@/models/Settlement"
 import Group from "@/models/Group.model"
+import User from "@/models/user.model";
 import { getServerSession } from "next-auth";
 import  authOptions  from "@/lib/auth";
+import { buildReputationSummary } from "@/lib/reputation";
 
 // create settlement
 
@@ -119,10 +121,10 @@ const isToMember = group.members.some(
         });
 
         return NextResponse.json(settlement, { status : 201});
-    }catch(error: any){
+    }catch(error: unknown){
         return NextResponse.json(
             {
-                message: error.message || "Failed to create settlement"
+                message: error instanceof Error ? error.message : "Failed to create settlement"
             },
             {
                 status: 500
@@ -205,12 +207,39 @@ if (settlement.fromUser.toString() !== session.user.id) {
 
         await settlement.save();
 
-        return NextResponse.json(settlement, {status: 200});
+        const debtorUserId = settlement.fromUser.toString();
+        const [completedSettlements, pendingSettlements] = await Promise.all([
+          Settlement.countDocuments({
+            fromUser: debtorUserId,
+            status: "completed",
+          }),
+          Settlement.countDocuments({
+            fromUser: debtorUserId,
+            status: "pending",
+          }),
+        ]);
 
-    }catch(error: any){
+        const reputationSummary = buildReputationSummary({
+          completedSettlements,
+          pendingSettlements,
+        });
+
+        await User.findByIdAndUpdate(debtorUserId, {
+          reputationScore: reputationSummary.score,
+        });
+
+        return NextResponse.json(
+          {
+            settlement,
+            reputation: reputationSummary,
+          },
+          {status: 200}
+        );
+
+    }catch(error: unknown){
         return NextResponse.json(
             {
-                message: error.message || "Failed to update settlement"
+                message: error instanceof Error ? error.message : "Failed to update settlement"
             },
             {
                 status: 500

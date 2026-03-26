@@ -54,6 +54,7 @@ const authOptions:NextAuthOptions = {   // credentials provider
                     email: user.email,
                     image: user.image,
                     reputationScore: user.reputationScore,
+                    upiId: user.upiId,
                 }
             }
         })
@@ -62,13 +63,21 @@ const authOptions:NextAuthOptions = {   // credentials provider
     callbacks:{
 
         // now put details of user in token
-        async jwt({token, user}){
+        async jwt({token, user, trigger, session}){
             if(user){
                 token.id = user.id
                 token.name = user.name
                 token.email = user.email
                 token.image = user.image
                 token.reputationScore = user.reputationScore;
+                token.upiId = user.upiId;
+            }
+
+            if (trigger === "update" && session?.user) {
+                token.name = session.user.name ?? token.name
+                token.email = session.user.email ?? token.email
+                token.image = session.user.image ?? token.image
+                token.upiId = session.user.upiId ?? token.upiId
             }
             return token
         },
@@ -85,6 +94,7 @@ const authOptions:NextAuthOptions = {   // credentials provider
                 session.user.name = token.name
                 session.user.image = token.image as string
                 session.user.reputationScore = token.reputationScore as number
+                session.user.upiId = token.upiId as string | undefined
             }
             return session;
         }

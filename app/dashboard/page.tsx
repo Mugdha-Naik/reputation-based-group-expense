@@ -3,8 +3,11 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { QRCodeSVG } from "qrcode.react";
 import PageContainer from "@/components/layout/PageContainer";
+import ProfileMenu from "@/components/ProfileMenu";
+import ReputationBadge from "@/components/ReputationBadge";
 
 interface Group {
   _id: string;
@@ -13,6 +16,7 @@ interface Group {
 }
 
 export default function Dashboard() {
+  const { data: session } = useSession();
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [qrGroup, setQrGroup] = useState<Group | null>(null);
@@ -83,13 +87,24 @@ export default function Dashboard() {
     <PageContainer>
       {/* Header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-semibold sm:text-2xl">Your Groups</h1>
-        <button
-          onClick={() => router.push("/groups/create")}
-          className="w-full rounded-lg bg-white px-4 py-2 font-medium text-black hover:bg-gray-200 sm:w-auto"
-        >
-          + Create Group
-        </button>
+        <div>
+          <h1 className="text-xl font-semibold sm:text-2xl">Your Groups</h1>
+          {session?.user?.name && (
+            <p className="mt-1 text-sm text-gray-400">Welcome back, {session.user.name}.</p>
+          )}
+          <div className="mt-3">
+            <ReputationBadge initialScore={session?.user?.reputationScore ?? 100} compact />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.push("/groups/create")}
+            className="rounded-lg bg-white px-4 py-2 font-medium text-black hover:bg-gray-200"
+          >
+            + Create Group
+          </button>
+          <ProfileMenu />
+        </div>
       </div>
 
       {/* Content */}

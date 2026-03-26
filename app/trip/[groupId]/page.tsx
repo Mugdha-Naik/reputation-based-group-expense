@@ -28,6 +28,9 @@ interface Settlement {
   status: SettlementStatus;
 }
 
+const getFallbackUpiId = (name: string) =>
+  `${name.toLowerCase().replace(/\s+/g, "")}@upi`;
+
 export default function TripPage() {
   const params = useParams();
   const groupId = params.groupId as string;
@@ -116,9 +119,7 @@ export default function TripPage() {
     const userId = session?.user?.id;
     if (!userId) return [];
 
-    return pendingSettlements.filter(
-      (settlement) => settlement.fromUser?._id === userId
-    );
+    return pendingSettlements.filter((settlement) => settlement.fromUser?._id === userId);
   }, [pendingSettlements, session?.user?.id]);
 
   const balances = useMemo(() => {
@@ -132,8 +133,7 @@ export default function TripPage() {
         base[settlement.toUser._id] = (base[settlement.toUser._id] || 0) + settlement.amount;
       }
       if (settlement.fromUser?._id) {
-        base[settlement.fromUser._id] =
-          (base[settlement.fromUser._id] || 0) - settlement.amount;
+        base[settlement.fromUser._id] = (base[settlement.fromUser._id] || 0) - settlement.amount;
       }
     });
 
@@ -147,13 +147,16 @@ export default function TripPage() {
   const upiLink = useMemo(() => {
     if (!activeSettlement) return "#";
     const payeeUpi =
-      activeSettlement.toUser.upiId ||
-      `${activeSettlement.toUser.name.toLowerCase().replace(/\s+/g, "")}@upi`;
+      activeSettlement.toUser.upiId || getFallbackUpiId(activeSettlement.toUser.name);
 
     return `upi://pay?pa=${encodeURIComponent(payeeUpi)}&pn=${encodeURIComponent(
       activeSettlement.toUser.name
     )}&am=${encodeURIComponent(formatAmount(activeSettlement.amount))}`;
   }, [activeSettlement]);
+
+  const activeSettlementUpiId = activeSettlement
+    ? activeSettlement.toUser.upiId || getFallbackUpiId(activeSettlement.toUser.name)
+    : "";
 
   async function handleBillChange(file: File | undefined) {
     if (!file) {
@@ -352,23 +355,44 @@ export default function TripPage() {
       <div className="mx-auto w-full max-w-md space-y-4 pb-8">
         {userOwes.length > 0 && (
           <div className="rounded-xl border border-gray-800 bg-gray-900 p-4">
-            <h2 className="text-lg font-semibold text-white">You Owe</h2>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-white">You Owe</h2>
+                <p className="mt-1 text-sm text-gray-400">
+                  Complete pending payments from here.
+                </p>
+              </div>
+              <span className="rounded-full border border-yellow-500/30 bg-yellow-500/10 px-3 py-1 text-xs font-medium text-yellow-300">
+                {userOwes.length} pending
+              </span>
+            </div>
             <div className="mt-3 space-y-3">
               {userOwes.map((settlement) => (
                 <div
                   key={settlement._id}
-                  className="rounded-lg border border-gray-700 bg-gray-950 p-3"
+                  className="rounded-xl border border-gray-700 bg-gray-950 p-4"
                 >
-                  <p className="text-sm text-white">
-                    {settlement.toUser.name} ₹{formatAmount(settlement.amount)}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => openPayModal(settlement)}
-                    className="mt-2 w-full rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500"
-                  >
-                    Pay Now
-                  </button>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm text-gray-400">Pay</p>
+                      <p className="mt-1 text-base font-semibold text-white">
+                        {settlement.toUser.name}
+                      </p>
+                      <p className="mt-1 text-sm text-gray-400">Pending settlement</p>
+                    </div>
+                    <div className="sm:text-right">
+                      <p className="text-xl font-semibold text-white">
+                        INR {formatAmount(settlement.amount)}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => openPayModal(settlement)}
+                        className="mt-3 w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-500 sm:w-auto"
+                      >
+                        Pay Now
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -390,7 +414,7 @@ export default function TripPage() {
                 <div key={entry.memberId} className="flex items-center justify-between text-sm">
                   <span className="text-white">{entry.memberName}</span>
                   <span className={color}>
-                    {prefix}₹{formatAmount(entry.amount)}
+                    {prefix}INR {formatAmount(entry.amount)}
                   </span>
                 </div>
               );
@@ -548,7 +572,7 @@ export default function TripPage() {
                     className="rounded-lg border border-gray-700 bg-gray-950 p-3 text-sm"
                   >
                     <p className="text-white">
-                      {settlement.fromUser.name} → {settlement.toUser.name} ₹
+                      {settlement.fromUser.name} to {settlement.toUser.name} INR{" "}
                       {formatAmount(settlement.amount)}
                     </p>
                     {settlement.status === "completed" ? (
@@ -559,7 +583,7 @@ export default function TripPage() {
                         onClick={() => openPayModal(settlement)}
                         className="mt-2 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-500"
                       >
-                        Mark Paid
+                        Pay Now
                       </button>
                     ) : (
                       <p className="mt-2 text-yellow-300">Pending</p>
@@ -590,41 +614,73 @@ export default function TripPage() {
 
       {activeSettlement && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-sm rounded-xl border border-gray-700 bg-gray-900 p-4">
-            <h3 className="text-lg font-semibold text-white">Settle Payment</h3>
-            <p className="mt-2 text-sm text-gray-200">
-              You owe {activeSettlement.toUser.name} ₹{formatAmount(activeSettlement.amount)}
-            </p>
+          <div className="w-full max-w-md rounded-2xl border border-gray-700 bg-gray-900 p-5 shadow-2xl shadow-black/40">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white">Settle Payment</h3>
+                <p className="mt-2 text-sm text-gray-300">
+                  You owe {activeSettlement.toUser.name} INR{" "}
+                  {formatAmount(activeSettlement.amount)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closePayModal}
+                className="rounded-full border border-gray-700 px-3 py-1 text-xs text-gray-300 hover:border-white hover:text-white"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-gray-800 bg-black p-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-gray-500">Payee</p>
+              <p className="mt-2 text-base font-semibold text-white">{activeSettlement.toUser.name}</p>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-gray-800 bg-gray-950 p-3">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-gray-500">Amount</p>
+                  <p className="mt-2 text-lg font-semibold text-white">
+                    INR {formatAmount(activeSettlement.amount)}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-800 bg-gray-950 p-3">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-gray-500">UPI ID</p>
+                  <p className="mt-2 break-all text-sm text-gray-200">{activeSettlementUpiId}</p>
+                </div>
+              </div>
+            </div>
 
             <div className="mt-4">
               <p className="text-sm font-semibold text-white">Payment Method</p>
-              <div className="mt-2 space-y-2 text-sm text-gray-200">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="settlementMethod"
-                    checked={settlementMethod === "UPI"}
-                    onChange={() => setSettlementMethod("UPI")}
-                  />
-                  UPI
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="settlementMethod"
-                    checked={settlementMethod === "Cash"}
-                    onChange={() => setSettlementMethod("Cash")}
-                  />
-                  Cash
-                </label>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {(["UPI", "Cash"] as PaymentMethod[]).map((method) => {
+                  const active = settlementMethod === method;
+                  return (
+                    <button
+                      key={method}
+                      type="button"
+                      onClick={() => setSettlementMethod(method)}
+                      className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                        active
+                          ? "border-blue-500 bg-blue-500/20 text-blue-300"
+                          : "border-gray-700 bg-gray-950 text-gray-200"
+                      }`}
+                    >
+                      {method}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             {settlementMethod === "UPI" ? (
-              <div className="mt-4 space-y-2">
+              <div className="mt-4 space-y-3 rounded-xl border border-gray-800 bg-black p-4">
+                <p className="text-sm text-gray-300">
+                  Open your UPI app to pay {activeSettlement.toUser.name}. After you complete the
+                  payment, come back and mark it as paid.
+                </p>
                 <a
                   href={upiLink}
-                  className="block w-full rounded-md bg-blue-600 px-3 py-2 text-center text-sm font-medium text-white hover:bg-blue-500"
+                  className="block w-full rounded-lg bg-blue-600 px-3 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-500"
                 >
                   Open UPI App
                 </a>
@@ -632,39 +688,33 @@ export default function TripPage() {
                   type="button"
                   onClick={() => markSettlementPaid(activeSettlement._id)}
                   disabled={payingSettlement}
-                  className="w-full rounded-md border border-gray-600 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-lg border border-gray-600 px-3 py-2.5 text-sm text-white hover:border-white disabled:opacity-60"
                 >
-                  Mark as Paid
+                  {payingSettlement ? "Updating..." : "I Have Paid"}
                 </button>
               </div>
             ) : (
-              <div className="mt-4 space-y-2">
+              <div className="mt-4 space-y-3 rounded-xl border border-gray-800 bg-black p-4">
                 <p className="text-sm text-gray-200">
-                  Confirm you paid {activeSettlement.toUser.name} ₹
-                  {formatAmount(activeSettlement.amount)} in cash
+                  Confirm that you paid {activeSettlement.toUser.name} INR{" "}
+                  {formatAmount(activeSettlement.amount)} in cash.
                 </p>
                 <button
                   type="button"
                   onClick={() => markSettlementPaid(activeSettlement._id)}
                   disabled={payingSettlement}
-                  className="w-full rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500"
+                  className="w-full rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-60"
                 >
-                  Confirm Payment
+                  {payingSettlement ? "Updating..." : "Confirm Payment"}
                 </button>
               </div>
             )}
 
             {paymentError && (
-              <p className="mt-3 text-xs text-red-300">{paymentError}</p>
+              <p className="mt-3 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                {paymentError}
+              </p>
             )}
-
-            <button
-              type="button"
-              onClick={closePayModal}
-              className="mt-4 w-full rounded-md border border-gray-600 px-3 py-2 text-sm text-gray-200"
-            >
-              Close
-            </button>
           </div>
         </div>
       )}
