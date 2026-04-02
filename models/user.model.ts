@@ -6,7 +6,7 @@ interface Iuser {
     image?: string,
     email: string,
     upiId?: string,
-    password: string,
+    password?: string,
     createdAt?: Date,
     updatedAt?: Date,
     reputationScore?: number
@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema<Iuser>({
     },
     password: {
       type: String,
-      required: true,
+      required: false,
       select: false, // 🔒 VERY IMPORTANT
     },
     email: {

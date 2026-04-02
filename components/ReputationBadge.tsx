@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getReputationLabel, getReputationTone } from "@/lib/reputation";
 
 interface ReputationBadgeProps {
   initialScore?: number;
@@ -11,29 +12,6 @@ interface ReputationResponse {
   score: number;
   completedSettlements: number;
   pendingSettlements: number;
-}
-
-function getBadgeTone(score: number) {
-  if (score >= 95) {
-    return "border-green-500/30 bg-green-500/10 text-green-300";
-  }
-
-  if (score >= 80) {
-    return "border-blue-500/30 bg-blue-500/10 text-blue-300";
-  }
-
-  if (score >= 60) {
-    return "border-yellow-500/30 bg-yellow-500/10 text-yellow-300";
-  }
-
-  return "border-red-500/30 bg-red-500/10 text-red-300";
-}
-
-function getLabel(score: number) {
-  if (score >= 95) return "Excellent";
-  if (score >= 80) return "Reliable";
-  if (score >= 60) return "Watchlist";
-  return "At Risk";
 }
 
 export default function ReputationBadge({
@@ -68,8 +46,8 @@ export default function ReputationBadge({
     };
   }, []);
 
-  const tone = getBadgeTone(score);
-  const label = getLabel(score);
+  const tone = getReputationTone(score);
+  const label = getReputationLabel(score);
 
   if (compact) {
     return (

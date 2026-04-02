@@ -1,132 +1,183 @@
-# Group Expense & Settlement Management PWA
+# SettleSmart
 
-> A smarter way to manage shared expenses with accountability and trust.
+SettleSmart is a full-stack group expense management application built to make shared payments clearer, faster, and more accountable.
 
-PROBLEM STATEMENT
+Instead of stopping at expense splitting, the product also supports settlement tracking, invite-by-link and QR onboarding, user profiles with UPI details, and a reputation model that reflects payment behavior over time.
 
-Managing shared expenses in groups often leads to confusion, delayed payments, and disputes. Existing expense-splitting applications mainly focus on calculations and lack mechanisms for long-term accountability and trust.
+## Features
 
-There is a need for a system that not only splits expenses accurately but also tracks payment behavior over time and promotes responsible participation in group settlements.
+- Email/password and Google authentication with NextAuth
+- Create groups and automatically add the creator as the first member
+- Join groups through shareable links and QR codes
+- Group member management and per-group trip workspace
+- Manual expense creation with participant selection
+- Bill upload flow for UPI and cash entries
+- Settlement generation from the expense ledger
+- Mark settlements as completed and update user reputation
+- User profile management with UPI ID and avatar URL
+- Reputation leaderboard across registered users
+- Protected group-scoped APIs with membership checks
+- PWA manifest support for installable app metadata
 
-SOLUTION OVERVIEW
+## Product Flow
 
-Our solution is a full-stack PWA that:
-- Simplifies group expense tracking
-- Ensures transparent settlement calculations
-- Introduces a reputation score to promote accountability
-- Provides a scalable foundation for advanced features such as OCR-based receipt scanning and payment insights
+1. Register or sign in
+2. Create a group
+3. Invite members through a join link or QR code
+4. Add expenses inside the group trip page
+5. Generate or refresh settlements from the shared ledger
+6. Complete payments and update reputation automatically
 
-PHASE - 1
+## Architecture
 
-Phase-1 focuses on building a functional and demonstrable MVP with the following features:
+### Frontend
 
-- Group / Trip creation
-- Member management
-- Manual expense entry
-- Equal expense splitting
-- Settlement summary generation
-- Simulated reputation score system
-- Basic PWA setup
-
-TECH STACK
-
-- Frontend:
-- Next.js (React)
+- Next.js App Router
+- React 19
 - TypeScript
 - Tailwind CSS
 
-State Management:
-- Zustand
+### Backend
 
-Backend (Phase-1):
-- Next.js API Routes (Mock backend)
+- Next.js Route Handlers
+- NextAuth for authentication and session management
+- MongoDB with Mongoose models
 
-Future Integrations:
-- OCR for receipt scanning
-- UPI deep-link payment tracking
-- Fraud and misuse detection
+### Core Domain Models
 
-PROJECT STRUCTURE
+- `User`
+  Stores account details, profile image, UPI ID, and reputation score
+- `Group`
+  Stores the creator and list of members
+- `Expense`
+  Acts as the source-of-truth ledger for shared expenses
+- `Settlement`
+  Stores pending and completed obligations derived from the expense ledger
+- `Notification`
+  Stores group expense notifications for affected users
 
-src/
-├── app/            # Pages and API routes
-├── components/     # Reusable UI components
-├── lib/            # Business logic (split calculations)
-├── models/         # Data models
-├── store/          # Global state management
+### Key Backend Design Decisions
 
-HOW TO RUN THE PROJECT LOCALLY
+- Expenses are treated as the permanent ledger
+- Pending settlements are rebuilt from expenses instead of being maintained by multiple conflicting flows
+- Completed settlements act as payment history that influences outstanding balances
+- Group-scoped APIs require both authentication and membership authorization
 
-### Prerequisites
-- Node.js 18+
-- npm or yarn
+## Project Structure
 
-### Setup
-1. Clone the repository
-   git clone https://github.com/your-username/group-expense-pwa.git
-
-2. Navigate to the project folder
-   cd group-expense-pwa
-
-3. Install dependencies
-   npm install
-
-4. Run the development server
-   npm run dev
-
-5. Open http://localhost:3000 in your browser
-
-TEAM COLLABORATION GUIDELINES
-
-- The `main` branch contains stable demo-ready code
-- All development should be done on feature branches
-- Pull requests must be reviewed before merging
-
-
-FUTURE SCOPE
-
-- OCR-based receipt scanning
-- Persistent reputation score across groups
-- UPI deep-link and payment confirmation tracking
-- Fraud prevention and misuse detection
-- Analytics on payment behavior
-- Migration to production-ready backend
-
-
-
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```text
+app/
+  api/                 Route handlers for auth, groups, expenses, settlements, profile
+  dashboard/           Authenticated dashboard view
+  groups/              Group list, create flow, and group detail pages
+  join/                Join group flow
+  profile/             User profile page
+  trip/                Group trip and settlement workspace
+  users/               Reputation leaderboard
+components/            Reusable UI building blocks
+lib/                   Business logic, auth config, DB connection, settlement rebuild logic
+models/                Mongoose schemas
+public/                Static assets and PWA manifest
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Screenshots
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Add real screenshots before sharing the repository publicly or linking it on your resume. Recommended captures:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Landing page
+- Dashboard with multiple groups
+- Group invite QR modal
+- Trip page with balances, expense entry, and settlement history
+- Profile page with reputation and UPI details
 
-## Learn More
+Suggested file names:
 
-To learn more about Next.js, take a look at the following resources:
+- `public/screenshots/landing.png`
+- `public/screenshots/dashboard.png`
+- `public/screenshots/invite-qr.png`
+- `public/screenshots/trip-flow.png`
+- `public/screenshots/profile.png`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Example markdown to use after adding images:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```md
+![Landing Page](public/screenshots/landing.png)
+![Dashboard](public/screenshots/dashboard.png)
+![Trip Flow](public/screenshots/trip-flow.png)
+```
 
-## Deploy on Vercel
+## Setup
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Prerequisites
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Node.js 18+
+- npm
+- MongoDB connection string
+- Google OAuth credentials if using Google sign-in
+
+### Environment Variables
+
+Create a `.env` file based on `.env.example` and provide values for:
+
+- `MONGODB_URL`
+- `NEXT_AUTH_SECRET`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `NEXT_PUBLIC_APP_URL`
+
+### Run Locally
+
+```bash
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+### Quality Checks
+
+```bash
+npm run lint
+npm run build
+npm run test:split
+node --test --experimental-strip-types lib/settlementLedger.test.ts
+```
+
+## Implemented Technical Highlights
+
+- Built secure credential and Google authentication using NextAuth and MongoDB-backed user records
+- Added protected route handling and membership checks for group-scoped APIs
+- Refactored settlement generation so the expense ledger is the single source of truth
+- Added reputation updates based on completed and pending payment behavior
+- Improved UX with better loading, empty, and error states on key authenticated pages
+
+## Challenges Solved
+
+### 1. Avoiding settlement drift
+
+Initial flows could create pending settlements in more than one place, which risked inconsistencies. This was resolved by rebuilding pending settlements from the expense ledger through a shared backend path.
+
+### 2. Protecting group data
+
+Group members, settlements, and expense history should not be visible to non-members. Group-scoped endpoints were hardened with session and membership validation.
+
+### 3. Improving real-user resilience
+
+Several pages originally relied on raw fetch failures or alerts. Loading, empty, and error states were added so the app behaves predictably for real users.
+
+## Future Scope
+
+- Receipt OCR and auto-fill for expense entry
+- Smarter payment reminders and behavioral insights
+- Better notification center and read/unread actions
+- Expanded automated test coverage for route handlers
+- True offline support and richer PWA behavior
+- Production deployment with seeded demo data and polished screenshots
+
+## Resume Positioning
+
+This project is strong to present as:
+
+- A full-stack Next.js product with authentication, protected APIs, and MongoDB persistence
+- A fintech-adjacent shared-expense platform with real business logic
+- A product-focused engineering project that combines UX, backend correctness, and data consistency

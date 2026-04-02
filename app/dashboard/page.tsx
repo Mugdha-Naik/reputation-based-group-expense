@@ -16,27 +16,42 @@ interface Group {
 }
 
 export default function Dashboard() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [qrGroup, setQrGroup] = useState<Group | null>(null);
   const [copied, setCopied] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace("/login");
+      return;
+    }
+
+    if (status !== "authenticated") {
+      return;
+    }
+
     const fetchGroups = async () => {
       try {
+        setError("");
         const res = await axios.get("/api/groups/my");
         setGroups(res.data);
-      } catch {
-        console.error("Failed to fetch groups");
+      } catch (fetchError) {
+        setError(
+          axios.isAxiosError(fetchError)
+            ? fetchError.response?.data?.message || "Failed to fetch groups"
+            : "Failed to fetch groups"
+        );
       } finally {
         setLoading(false);
       }
     };
 
     fetchGroups();
-  }, []);
+  }, [router, status]);
 
   const getJoinUrl = (groupId: string) => {
     const configuredBaseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
@@ -78,14 +93,21 @@ export default function Dashboard() {
         throw new Error("Clipboard API unavailable");
       }
       setCopied(true);
-    } catch (error) {
-      console.error("Failed to copy join link", error);
+    } catch (copyError) {
+      console.error("Failed to copy join link", copyError);
     }
   };
 
+  if (loading || status === "loading") {
+    return (
+      <PageContainer className="flex items-center justify-center">
+        <p className="text-sm text-gray-300">Loading your dashboard...</p>
+      </PageContainer>
+    );
+  }
+
   return (
     <PageContainer>
-      {/* Header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold sm:text-2xl">Your Groups</h1>
@@ -98,6 +120,12 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => router.push("/users")}
+            className="rounded-lg border border-gray-700 px-4 py-2 font-medium text-white hover:border-white"
+          >
+            Users
+          </button>
+          <button
             onClick={() => router.push("/groups/create")}
             className="rounded-lg bg-white px-4 py-2 font-medium text-black hover:bg-gray-200"
           >
@@ -107,13 +135,28 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Content */}
-      {loading ? (
-        <p className="text-gray-400">Loading groups...</p>
+      {error ? (
+        <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-300">
+          <p>{error}</p>
+          <button
+            type="button"
+            onClick={() => router.refresh()}
+            className="mt-3 rounded-lg border border-red-400/50 px-3 py-2 text-xs text-red-200 hover:border-red-300"
+          >
+            Try Again
+          </button>
+        </div>
       ) : groups.length === 0 ? (
-        <div className="text-gray-400">
-          <p>No groups yet.</p>
-          <p className="mt-2">Create a group to start managing expenses.</p>
+        <div className="rounded-xl border border-gray-800 bg-gray-900 p-5 text-gray-400">
+          <p className="text-base font-medium text-white">No groups yet</p>
+          <p className="mt-2">Create your first group to start managing shared expenses.</p>
+          <button
+            type="button"
+            onClick={() => router.push("/groups/create")}
+            className="mt-4 rounded-lg bg-white px-4 py-2 text-sm font-medium text-black hover:bg-gray-200"
+          >
+            Create Group
+          </button>
         </div>
       ) : (
         <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -126,7 +169,7 @@ export default function Dashboard() {
               <div className="flex items-start justify-between gap-3">
                 <h2 className="text-lg font-semibold">{group.name}</h2>
                 <button
-                  className="px-2 py-1 text-xs border border-gray-500 rounded-md hover:border-white hover:text-white"
+                  className="rounded-md border border-gray-500 px-2 py-1 text-xs hover:border-white hover:text-white"
                   onClick={(event) => {
                     event.stopPropagation();
                     openQrModal(group);
@@ -135,7 +178,7 @@ export default function Dashboard() {
                   QR
                 </button>
               </div>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="mt-1 text-sm text-gray-400">
                 Created on {new Date(group.createdAt).toLocaleDateString()}
               </p>
             </div>
@@ -145,7 +188,7 @@ export default function Dashboard() {
 
       {qrGroup && (
         <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center px-4 z-50"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4"
           onClick={closeQrModal}
         >
           <div
@@ -153,25 +196,23 @@ export default function Dashboard() {
             onClick={(event) => event.stopPropagation()}
           >
             <h3 className="text-lg font-semibold">Invite to {qrGroup.name}</h3>
-            <p className="text-sm text-gray-400 mt-1">
-              Scan to join this group
-            </p>
+            <p className="mt-1 text-sm text-gray-400">Scan to join this group</p>
             {joinUrl && (
               <div className="mx-auto mt-4 w-fit rounded-lg bg-white p-2">
                 <QRCodeSVG value={joinUrl} size={220} />
               </div>
             )}
-            <p className="text-xs text-gray-400 mt-4 break-all">{joinUrl}</p>
+            <p className="mt-4 break-all text-xs text-gray-400">{joinUrl}</p>
             <div className="mt-4 flex flex-col gap-2 sm:flex-row">
               <button
                 onClick={copyJoinLink}
-                className="flex-1 bg-white text-black px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-200"
+                className="flex-1 rounded-lg bg-white px-3 py-2 text-sm font-medium text-black hover:bg-gray-200"
               >
                 {copied ? "Copied" : "Copy link"}
               </button>
               <button
                 onClick={closeQrModal}
-                className="flex-1 border border-gray-500 px-3 py-2 rounded-lg text-sm hover:border-white"
+                className="flex-1 rounded-lg border border-gray-500 px-3 py-2 text-sm hover:border-white"
               >
                 Close
               </button>

@@ -1,111 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import SettlementList from "@/components/SettlementList";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import PageContainer from "@/components/layout/PageContainer";
 
-interface Settlement {
-  _id: string;
-  fromUser: { name: string };
-  toUser: { name: string };
-  amount: number;
-  status: string;
-}
-
-export default function TripPage() {
-  const params = useParams();
-  const groupId = params.groupId as string;
-
-  const [settlements, setSettlements] = useState<Settlement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-
-  async function fetchSettlements() {
-    try {
-      const res = await fetch(`/api/settlement/${groupId}`, {
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        console.error("Failed to fetch settlements");
-        return;
-      }
-
-      const data = await res.json();
-      setSettlements(data);
-    } catch (err) {
-      console.error("Error fetching settlements:", err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function markPaid(id: string) {
-    try {
-      const res = await fetch("/api/settlement", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ settlementId: id }),
-      });
-
-      if (!res.ok) {
-        console.error("Failed to mark settlement paid");
-        return;
-      }
-
-      fetchSettlements();
-    } catch (err) {
-      console.error("Error updating settlement:", err);
-    }
-  }
-
-  async function generateSettlementsForGroup() {
-    if (!groupId) return;
-
-    try {
-      setGenerating(true);
-      const res = await fetch(`/api/settlement/generate/${groupId}`, {
-        method: "POST",
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        console.error("Failed to generate settlements");
-        return;
-      }
-
-      await fetchSettlements();
-    } catch (err) {
-      console.error("Error generating settlements:", err);
-    } finally {
-      setGenerating(false);
-    }
-  }
+export default function TripLandingPage() {
+  const router = useRouter();
+  const { status } = useSession();
 
   useEffect(() => {
-    if (groupId) {
-      fetchSettlements();
+    if (status === "unauthenticated") {
+      router.replace("/login");
     }
-  }, [groupId]);
+  }, [router, status]);
 
-  if (loading) return <p>Loading settlements...</p>;
+  if (status === "loading") {
+    return (
+      <PageContainer className="flex items-center justify-center">
+        <p className="text-sm text-gray-300">Loading trip page...</p>
+      </PageContainer>
+    );
+  }
 
   return (
-    <div className="p-4">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-xl font-bold">Settlement History</h2>
+    <PageContainer>
+      <div className="mx-auto mt-8 max-w-md rounded-xl border border-gray-800 bg-gray-900 p-5">
+        <h1 className="text-xl font-semibold text-white">Trip</h1>
+        <p className="mt-2 text-sm text-gray-400">
+          Open a specific group from your dashboard to manage expenses and settlements for that
+          trip.
+        </p>
         <button
           type="button"
-          onClick={generateSettlementsForGroup}
-          disabled={generating || !groupId}
-          className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+          onClick={() => router.push("/dashboard")}
+          className="mt-4 rounded-lg bg-white px-4 py-2 text-sm font-medium text-black hover:bg-gray-200"
         >
-          {generating ? "Generating..." : "Generate Settlements"}
+          Go to Dashboard
         </button>
       </div>
-
-      <SettlementList settlements={settlements} onMarkPaid={markPaid} />
-    </div>
+    </PageContainer>
   );
 }

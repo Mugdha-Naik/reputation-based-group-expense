@@ -9,9 +9,24 @@ export async function POST(request: NextRequest){
     try{
         await connectDB()
 const { name, email, password } = await request.json()
+const normalizedName = typeof name === "string" ? name.trim() : "";
+const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
         
 
+if (!normalizedName || !normalizedEmail || !password) {
+    return NextResponse.json(
+        { message: "All fields are required!" },
+        { status: 400 }
+    );
+}
+
+if (!normalizedEmail.endsWith("@gmail.com")) {
+    return NextResponse.json(
+        { message: "Only original Gmail addresses are allowed for registration!" },
+        { status: 400 }
+    );
+}
 
 // 2. Password validation
 if (password.length < 6) {
@@ -22,7 +37,7 @@ if (password.length < 6) {
 }
 
 // 3. Existing user check
-let existUser = await User.findOne({ email }).select("+password");
+const existUser = await User.findOne({ email: normalizedEmail }).select("+password");
 
 if (existUser) {
     return NextResponse.json(
@@ -33,7 +48,7 @@ if (existUser) {
         const hashedPassword = await bcrypt.hash(password, 10)
 
         const user = await User.create({
-            name: name, email: email, password: hashedPassword
+            name: normalizedName, email: normalizedEmail, password: hashedPassword
         })
 
         return NextResponse.json(

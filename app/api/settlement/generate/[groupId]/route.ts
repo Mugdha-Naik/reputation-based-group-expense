@@ -4,10 +4,7 @@ import { getServerSession } from "next-auth";
 import authOptions from "@/lib/auth";
 import connectDB from "@/lib/db";
 import Group from "@/models/Group.model";
-import Expense from "@/models/Expense";
-import Settlement from "@/models/Settlement";
-import { calculateSplit } from "@/lib/calculateSplit";
-import { generateSettlements } from "@/lib/generateSettlements";
+import { rebuildPendingSettlementsForGroup } from "@/lib/rebuildSettlements";
 
 export async function POST(
   _req: NextRequest,
@@ -44,39 +41,7 @@ export async function POST(
       );
     }
 
-    const expenses = await Expense.find({ groupId }).lean();
-
-    const balancesMap = calculateSplit(
-      expenses.map((expense) => ({
-        title: expense.title,
-        amount: expense.amount,
-        paidBy: expense.paidBy,
-        splitAmong: expense.splitAmong,
-      })),
-      memberIds
-    );
-
-    const generated = generateSettlements(
-      Object.entries(balancesMap).map(([userId, balance]) => ({
-        userId,
-        balance,
-      }))
-    );
-
-    await Settlement.deleteMany({ groupId, status: "pending" });
-
-    const created =
-      generated.length > 0
-        ? await Settlement.insertMany(
-            generated.map((item) => ({
-              groupId,
-              fromUser: item.fromUser,
-              toUser: item.toUser,
-              amount: item.amount,
-              status: "pending",
-            }))
-          )
-        : [];
+    const created = await rebuildPendingSettlementsForGroup(groupId);
 
     return NextResponse.json(
       {

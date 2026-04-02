@@ -22,7 +22,7 @@ export async function GET() {
     }).sort({ createdAt: -1 });
 
     return NextResponse.json(groups, { status: 200 });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { message: "Failed to fetch groups" },
       { status: 500 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import PageContainer from "@/components/layout/PageContainer";
 
@@ -34,7 +34,8 @@ const getFallbackUpiId = (name: string) =>
 export default function TripPage() {
   const params = useParams();
   const groupId = params.groupId as string;
-  const { data: session } = useSession();
+  const router = useRouter();
+  const { data: session, status } = useSession();
 
   const [members, setMembers] = useState<Member[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
@@ -98,9 +99,18 @@ export default function TripPage() {
   }, [groupId]);
 
   useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace("/login");
+      return;
+    }
+
+    if (status !== "authenticated") {
+      return;
+    }
+
     if (!groupId) return;
     fetchPageData();
-  }, [groupId, fetchPageData]);
+  }, [fetchPageData, groupId, router, status]);
 
   useEffect(() => {
     return () => {
@@ -342,7 +352,7 @@ export default function TripPage() {
     }
   }
 
-  if (loading) {
+  if (loading || status === "loading") {
     return (
       <PageContainer>
         <p className="text-sm text-gray-300">Loading trip details...</p>
@@ -401,25 +411,31 @@ export default function TripPage() {
 
         <div className="rounded-xl border border-gray-800 bg-gray-900 p-4">
           <h2 className="text-lg font-semibold text-white">Balances</h2>
-          <div className="mt-3 space-y-2">
-            {balances.map((entry) => {
-              const color =
-                entry.amount > 0
-                  ? "text-green-400"
-                  : entry.amount < 0
-                    ? "text-red-400"
-                    : "text-gray-300";
-              const prefix = entry.amount > 0 ? "+" : "";
-              return (
-                <div key={entry.memberId} className="flex items-center justify-between text-sm">
-                  <span className="text-white">{entry.memberName}</span>
-                  <span className={color}>
-                    {prefix}INR {formatAmount(entry.amount)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          {balances.length === 0 ? (
+            <p className="mt-2 text-sm text-gray-400">
+              No members are available yet. Add people to this group to start splitting expenses.
+            </p>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {balances.map((entry) => {
+                const color =
+                  entry.amount > 0
+                    ? "text-green-400"
+                    : entry.amount < 0
+                      ? "text-red-400"
+                      : "text-gray-300";
+                const prefix = entry.amount > 0 ? "+" : "";
+                return (
+                  <div key={entry.memberId} className="flex items-center justify-between text-sm">
+                    <span className="text-white">{entry.memberName}</span>
+                    <span className={color}>
+                      {prefix}INR {formatAmount(entry.amount)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="space-y-5 rounded-xl border border-gray-800 bg-gray-900 p-4">
@@ -508,28 +524,34 @@ export default function TripPage() {
 
           <div>
             <p className="text-sm font-semibold text-white">Select Participants</p>
-            <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
-              {members.map((member) => {
-                const selected = selectedParticipants.includes(member._id);
-                return (
-                  <button
-                    key={member._id}
-                    type="button"
-                    onClick={() => toggleParticipant(member._id)}
-                    className="flex flex-col items-center gap-2 rounded-lg p-2"
-                  >
-                    <span
-                      className={`h-8 w-8 rounded-full border-2 transition ${
-                        selected
-                          ? "border-blue-500 bg-blue-500"
-                          : "border-gray-500 bg-transparent"
-                      }`}
-                    />
-                    <span className="text-center text-xs text-gray-200">{member.name}</span>
-                  </button>
-                );
-              })}
-            </div>
+            {members.length === 0 ? (
+              <p className="mt-3 text-sm text-gray-400">
+                No participants available yet. Add members to this group first.
+              </p>
+            ) : (
+              <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
+                {members.map((member) => {
+                  const selected = selectedParticipants.includes(member._id);
+                  return (
+                    <button
+                      key={member._id}
+                      type="button"
+                      onClick={() => toggleParticipant(member._id)}
+                      className="flex flex-col items-center gap-2 rounded-lg p-2"
+                    >
+                      <span
+                        className={`h-8 w-8 rounded-full border-2 transition ${
+                          selected
+                            ? "border-blue-500 bg-blue-500"
+                            : "border-gray-500 bg-transparent"
+                        }`}
+                      />
+                      <span className="text-center text-xs text-gray-200">{member.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div>

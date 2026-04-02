@@ -4,15 +4,14 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import connectDB from "@/lib/db";
 import Settlement from "@/models/Settlement";
+import Group from "@/models/Group.model";
 import authOptions from "@/lib/auth";
 import { getServerSession } from "next-auth";
 
 export async function GET(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ groupId: string }> }
 ) {
-  await connectDB();
-
    const session = await getServerSession(authOptions);
 
   if (!session) {
@@ -29,6 +28,24 @@ export async function GET(
       return NextResponse.json(
         { message: "Invalid groupId" },
         { status: 400 }
+      );
+    }
+
+    await connectDB();
+
+    const group = await Group.findById(groupId).lean();
+    if (!group) {
+      return NextResponse.json({ message: "Group not found" }, { status: 404 });
+    }
+
+    const isMember = (group.members || []).some(
+      (member: mongoose.Types.ObjectId) => member.toString() === session.user.id
+    );
+
+    if (!isMember) {
+      return NextResponse.json(
+        { message: "You are not a member of this group" },
+        { status: 403 }
       );
     }
 

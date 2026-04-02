@@ -17,12 +17,25 @@ interface ProfileSummary {
   createdAt?: string;
 }
 
+interface PendingSummaryItem {
+  amount: number;
+  createdAt?: string;
+  toUserName: string;
+}
+
+interface PendingSummary {
+  count: number;
+  totalAmount: number;
+  items: PendingSummaryItem[];
+}
+
 export default function ProfileMenu({ className = "" }: ProfileMenuProps) {
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [groupCount, setGroupCount] = useState<number | null>(null);
   const [profile, setProfile] = useState<ProfileSummary | null>(null);
+  const [pendingSummary, setPendingSummary] = useState<PendingSummary | null>(null);
   const [error, setError] = useState("");
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -80,6 +93,7 @@ export default function ProfileMenu({ className = "" }: ProfileMenuProps) {
         }
 
         setProfile(profileData.user);
+        setPendingSummary(profileData.pendingSummary ?? null);
 
         if (groupsRes.ok) {
           const groupsData = await groupsRes.json();
@@ -184,6 +198,35 @@ export default function ProfileMenu({ className = "" }: ProfileMenuProps) {
                   <p className="mt-2 break-all text-sm text-gray-200">{displayUpiId}</p>
                 </div>
 
+                <div className="mt-3 rounded-lg border border-gray-800 bg-gray-950 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-gray-500">
+                      Pending To Pay
+                    </p>
+                    <span className="text-xs text-yellow-300">
+                      INR {pendingSummary?.totalAmount?.toFixed(2) ?? "0.00"}
+                    </span>
+                  </div>
+                  {pendingSummary && pendingSummary.count > 0 ? (
+                    <div className="mt-2 space-y-2">
+                      {pendingSummary.items.slice(0, 3).map((item, index) => (
+                        <div key={`${item.toUserName}-${index}`} className="text-sm text-gray-200">
+                          <p>
+                            Pay {item.toUserName} INR{" "}
+                            {Number.isInteger(item.amount) ? item.amount : item.amount.toFixed(2)}
+                          </p>
+                        </div>
+                      ))}
+                      <p className="text-xs text-gray-500">
+                        {pendingSummary.count} pending settlement
+                        {pendingSummary.count === 1 ? "" : "s"}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-gray-400">No pending payments.</p>
+                  )}
+                </div>
+
                 {profile?.createdAt && (
                   <p className="mt-3 text-xs text-gray-500">
                     Member since {new Date(profile.createdAt).toLocaleDateString()}
@@ -195,6 +238,13 @@ export default function ProfileMenu({ className = "" }: ProfileMenuProps) {
               {error && <p className="mt-3 text-xs text-red-300">{error}</p>}
 
               <div className="mt-4 grid gap-2">
+                <Link
+                  href="/users"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg border border-gray-700 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:border-white"
+                >
+                  View All Users
+                </Link>
                 <Link
                   href="/profile"
                   onClick={() => setOpen(false)}

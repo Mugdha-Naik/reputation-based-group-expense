@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import authOptions from "@/lib/auth";
 import connectDB from "@/lib/db";
 import User from "@/models/user.model";
+import Settlement from "@/models/Settlement";
 
 export async function GET() {
   try {
@@ -18,11 +19,38 @@ export async function GET() {
       .select("name email image upiId reputationScore createdAt")
       .lean();
 
+    const pendingSettlements = await Settlement.find({
+      fromUser: session.user.id,
+      status: "pending",
+    })
+      .populate("toUser", "name")
+      .select("amount toUser createdAt")
+      .sort({ createdAt: -1 })
+      .lean();
+
     if (!user) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ user }, { status: 200 });
+    const pendingSummary = {
+      count: pendingSettlements.length,
+      totalAmount: pendingSettlements.reduce(
+        (total, settlement) => total + settlement.amount,
+        0
+      ),
+      items: pendingSettlements.map((settlement) => ({
+        amount: settlement.amount,
+        createdAt: settlement.createdAt,
+        toUserName:
+          typeof settlement.toUser === "object" &&
+          settlement.toUser !== null &&
+          "name" in settlement.toUser
+            ? String(settlement.toUser.name)
+            : "Member",
+      })),
+    };
+
+    return NextResponse.json({ user, pendingSummary }, { status: 200 });
   } catch {
     return NextResponse.json(
       { message: "Failed to fetch profile" },

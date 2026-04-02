@@ -1,5 +1,4 @@
 import mongoose from "mongoose"
-import { TurborepoAccessTraceResult } from "next/dist/build/turborepo-access-trace"
 
 interface IGroup{
     name: string,

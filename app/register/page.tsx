@@ -3,6 +3,8 @@
 import { useState } from "react";
 import axios, { AxiosError } from "axios";
 import { useRouter } from "next/navigation";
+import { FcGoogle } from "react-icons/fc";
+import { signIn } from "next-auth/react";
 import CenteredCard from "@/components/layout/CenteredCard";
 
 export default function Register() {
@@ -13,6 +15,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
 
   const router = useRouter();
+  const normalizedEmail = email.trim().toLowerCase();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,8 +26,14 @@ export default function Register() {
     setLoading(true);
 
     // ✅ client-side validation
-    if (!name || !email || !password) {
+    if (!name || !normalizedEmail || !password) {
       setError("All fields are required");
+      setLoading(false);
+      return;
+    }
+
+    if (!normalizedEmail.endsWith("@gmail.com")) {
+      setError("Only original Gmail addresses are allowed for registration");
       setLoading(false);
       return;
     }
@@ -38,7 +47,7 @@ export default function Register() {
     try {
       const res = await axios.post("/api/auth/register", {
         name,
-        email,
+        email: normalizedEmail,
         password,
       });
 
@@ -83,11 +92,14 @@ export default function Register() {
             <label className="block mb-1">Email</label>
             <input
               type="email"
-              placeholder="Enter email"
+              placeholder="Enter your Gmail address"
               className="w-full bg-gray-900 border-b border-white outline-none py-2"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
+            <p className="mt-2 text-xs text-gray-400">
+              Registration is currently limited to verified Gmail-style accounts.
+            </p>
           </div>
 
           <div>
@@ -109,6 +121,21 @@ export default function Register() {
             {loading ? "Registering..." : "Register"}
           </button>
         </form>
+
+        <div className="my-6 flex items-center gap-2">
+          <hr className="flex-grow border-gray-600" />
+          <span className="text-sm">OR</span>
+          <hr className="flex-grow border-gray-600" />
+        </div>
+
+        <button
+          type="button"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-white py-2 text-black hover:bg-gray-200"
+          onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+        >
+          <FcGoogle />
+          Continue with Google
+        </button>
 
         <p
           className="text-sm text-center mt-4 cursor-pointer text-blue-400"

@@ -98,7 +98,7 @@ export default function Login() {
 
         <button
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-white py-2 text-black hover:bg-gray-200"
-          onClick={() => signIn("google", { callbackUrl: "/" })}
+          onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
         >
           <FcGoogle />
           Sign in with Google
