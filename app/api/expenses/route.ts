@@ -5,9 +5,9 @@ import connectDB from "@/lib/db";
 import Expense from "@/models/Expense";
 import Group from "@/models/Group.model";
 import Notification from "@/models/Notification";
-import Settlement from "@/models/Settlement";
 import authOptions from "@/lib/auth";
 import User from "@/models/user.model";
+import { rebuildPendingSettlementsForGroup } from "@/lib/rebuildSettlements";
 
 // POST /api/expenses
 // Body:
@@ -140,23 +140,11 @@ export async function POST(request: NextRequest) {
 
     const payer = await User.findById(resolvedPaidBy).select("name").lean();
     const payerName = payer?.name || "A member";
-
     const notifyUserIds = Array.from(new Set(resolvedParticipants)).filter(
       (participant) => participant !== resolvedPaidBy
     );
-    const splitAmount = Number((resolvedAmount / resolvedParticipants.length).toFixed(2));
 
-    if (notifyUserIds.length > 0) {
-      await Settlement.insertMany(
-        notifyUserIds.map((userId) => ({
-          groupId,
-          fromUser: userId,
-          toUser: resolvedPaidBy,
-          amount: splitAmount,
-          status: "pending",
-        }))
-      );
-    }
+    await rebuildPendingSettlementsForGroup(groupId);
 
     if (notifyUserIds.length > 0) {
       await Notification.insertMany(
@@ -164,7 +152,7 @@ export async function POST(request: NextRequest) {
           userId,
           groupId,
           expenseId: expense._id,
-          message: `You owe ${payerName} ₹${splitAmount} for a group expense.`,
+          message: `${payerName} added a new group expense. Open the trip to view updated balances.`,
           link: `/trip/${groupId}`,
           read: false,
         }))
@@ -184,6 +172,11 @@ export async function POST(request: NextRequest) {
 // GET /api/expenses?groupId=<group-id>
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     const groupId = request.nextUrl.searchParams.get("groupId");
 
     if (!groupId) {
@@ -193,7 +186,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    if (!mongoose.Types.ObjectId.isValid(groupId)) {
+      return NextResponse.json({ message: "Invalid groupId" }, { status: 400 });
+    }
+
     await connectDB();
+
+    const group = await Group.findById(groupId).lean();
+    if (!group) {
+      return NextResponse.json({ message: "Group not found" }, { status: 404 });
+    }
+
+    const isMember = (group.members || []).some(
+      (member: mongoose.Types.ObjectId) => member.toString() === session.user.id
+    );
+
+    if (!isMember) {
+      return NextResponse.json(
+        { message: "You are not a member of this group" },
+        { status: 403 }
+      );
+    }
 
     const expenses = await Expense.find({ groupId })
       .sort({ createdAt: -1 })

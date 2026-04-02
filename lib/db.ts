@@ -1,6 +1,6 @@
 import { connect } from "mongoose";
 
-let mongodburl = process.env.MONGODB_URL
+const mongodburl = process.env.MONGODB_URL
 
 // check if mongodb url is given in .env
 if(!mongodburl){

@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PageContainer from "@/components/layout/PageContainer";
 
-export default function ExpensesPage() {
+function ExpensesRedirectContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const groupId = searchParams.get("groupId");
@@ -23,5 +23,21 @@ export default function ExpensesPage() {
         </p>
       </div>
     </PageContainer>
+  );
+}
+
+export default function ExpensesPage() {
+  return (
+    <Suspense
+      fallback={
+        <PageContainer>
+          <div className="mx-auto mt-8 max-w-md rounded-xl border border-gray-800 bg-gray-900 p-4">
+            <p className="text-sm text-gray-300">Loading expenses...</p>
+          </div>
+        </PageContainer>
+      }
+    >
+      <ExpensesRedirectContent />
+    </Suspense>
   );
 }

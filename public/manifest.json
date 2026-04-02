@@ -1,0 +1,19 @@
+{
+  "name": "SettleSmart",
+  "short_name": "SettleSmart",
+  "description": "Track shared group expenses, generate settlements, and manage accountability with reputation-aware payments.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait",
+  "lang": "en",
+  "categories": ["finance", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}
