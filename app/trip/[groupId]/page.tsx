@@ -3,7 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 import PageContainer from "@/components/layout/PageContainer";
+import {
+  EMPTY_RECEIPT_EXTRACTION,
+  RECEIPT_CATEGORIES,
+  type ReceiptCategory,
+} from "@/lib/receiptExtraction";
 
 type PaymentMethod = "UPI" | "Cash";
 type SettlementStatus = "pending" | "completed";
@@ -42,12 +48,18 @@ export default function TripPage() {
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("UPI");
   const [billImage, setBillImage] = useState<string>("");
+  const [expenseTitle, setExpenseTitle] = useState("");
+  const [expenseCategory, setExpenseCategory] = useState<ReceiptCategory | "">("");
+  const [expenseDate, setExpenseDate] = useState("");
   const [amount, setAmount] = useState("");
   const [submittingExpense, setSubmittingExpense] = useState(false);
+  const [extractingReceipt, setExtractingReceipt] = useState(false);
   const [payingSettlement, setPayingSettlement] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [receiptExtractError, setReceiptExtractError] = useState("");
+  const [receiptExtractSuccess, setReceiptExtractSuccess] = useState("");
   const [paymentError, setPaymentError] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState("");
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -171,12 +183,16 @@ export default function TripPage() {
   async function handleBillChange(file: File | undefined) {
     if (!file) {
       setBillImage("");
+      setReceiptExtractError("");
+      setReceiptExtractSuccess("");
       return;
     }
 
     try {
       const dataUrl = await readFileAsDataUrl(file);
       setBillImage(dataUrl);
+      setReceiptExtractError("");
+      setReceiptExtractSuccess("");
     } catch {
       setError("Failed to process bill image");
     }
@@ -231,7 +247,74 @@ export default function TripPage() {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const imageDataUrl = canvas.toDataURL("image/jpeg", 0.9);
     setBillImage(imageDataUrl);
+    setReceiptExtractError("");
+    setReceiptExtractSuccess("");
     closeCamera();
+  }
+
+  async function handleExtractReceipt() {
+    if (!billImage) {
+      setReceiptExtractError("Upload a receipt image before extracting details");
+      return;
+    }
+
+    try {
+      setExtractingReceipt(true);
+      setReceiptExtractError("");
+      setReceiptExtractSuccess("");
+      setError("");
+
+      const response = await fetch("/api/ai/receipt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          groupId,
+          billImage,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to extract receipt details");
+      }
+
+      const extraction = {
+        ...EMPTY_RECEIPT_EXTRACTION,
+        ...data,
+      };
+
+      if (typeof extraction.title === "string") {
+        setExpenseTitle(extraction.title);
+      }
+
+      if (typeof extraction.amount === "number" && Number.isFinite(extraction.amount)) {
+        setAmount(String(extraction.amount));
+      }
+
+      if (typeof extraction.date === "string") {
+        setExpenseDate(extraction.date);
+      }
+
+      if (
+        typeof extraction.category === "string" &&
+        RECEIPT_CATEGORIES.includes(extraction.category as ReceiptCategory)
+      ) {
+        setExpenseCategory(extraction.category as ReceiptCategory);
+      } else {
+        setExpenseCategory("");
+      }
+
+      setReceiptExtractSuccess("Receipt details extracted. Review before saving.");
+    } catch (extractError) {
+      const message =
+        extractError instanceof Error
+          ? extractError.message
+          : "Failed to extract receipt details";
+      setReceiptExtractError(message);
+    } finally {
+      setExtractingReceipt(false);
+    }
   }
 
   function toggleParticipant(memberId: string) {
@@ -283,6 +366,7 @@ export default function TripPage() {
         body: JSON.stringify({
           groupId,
           paidBy,
+          title: expenseTitle,
           amount: numericAmount,
           participants: selectedParticipants,
           paymentMethod,
@@ -297,6 +381,11 @@ export default function TripPage() {
 
       setSelectedParticipants([]);
       setBillImage("");
+      setExpenseTitle("");
+      setExpenseCategory("");
+      setExpenseDate("");
+      setReceiptExtractError("");
+      setReceiptExtractSuccess("");
       setAmount("");
       setSuccess("Expense split successfully");
       await fetchPageData();
@@ -522,6 +611,64 @@ export default function TripPage() {
             )}
           </div>
 
+          <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-3 text-sm text-blue-100">
+            <p className="font-semibold">AI receipt flow</p>
+            <p className="mt-1 text-xs text-blue-100/80">
+              Upload receipt, extract details, then review before saving. AI only suggests
+              values and never submits the expense for you.
+            </p>
+          </div>
+
+          {billImage && (
+            <div className="space-y-3 rounded-lg border border-gray-800 bg-black/30 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-white">Receipt ready for AI review</p>
+                <button
+                  type="button"
+                  onClick={handleExtractReceipt}
+                  disabled={extractingReceipt}
+                  className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+                >
+                  {extractingReceipt ? "Extracting..." : "Extract Details"}
+                </button>
+              </div>
+              <div className="overflow-hidden rounded-lg border border-gray-800">
+                <Image
+                  src={billImage}
+                  alt="Uploaded receipt preview"
+                  width={800}
+                  height={600}
+                  unoptimized
+                  className="max-h-48 w-full object-contain"
+                />
+              </div>
+              {receiptExtractError && (
+                <p className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                  {receiptExtractError}
+                </p>
+              )}
+              {receiptExtractSuccess && (
+                <p className="rounded-md border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-300">
+                  {receiptExtractSuccess}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div>
+            <label htmlFor="expense-title" className="text-sm font-semibold text-white">
+              Title
+            </label>
+            <input
+              id="expense-title"
+              type="text"
+              value={expenseTitle}
+              onChange={(event) => setExpenseTitle(event.target.value)}
+              placeholder="Merchant or expense title"
+              className="mt-2 w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
+            />
+          </div>
+
           <div>
             <p className="text-sm font-semibold text-white">Select Participants</p>
             {members.length === 0 ? (
@@ -568,6 +715,42 @@ export default function TripPage() {
               placeholder="Enter amount"
               className="mt-2 w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
             />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="expense-category" className="text-sm font-semibold text-white">
+                Category
+              </label>
+              <select
+                id="expense-category"
+                value={expenseCategory}
+                onChange={(event) =>
+                  setExpenseCategory(event.target.value as ReceiptCategory | "")
+                }
+                className="mt-2 w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
+              >
+                <option value="">Select category</option>
+                {RECEIPT_CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="expense-date" className="text-sm font-semibold text-white">
+                Receipt Date
+              </label>
+              <input
+                id="expense-date"
+                type="date"
+                value={expenseDate}
+                onChange={(event) => setExpenseDate(event.target.value)}
+                className="mt-2 w-full rounded-lg border border-gray-700 bg-gray-950 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
+              />
+            </div>
           </div>
 
           <button
