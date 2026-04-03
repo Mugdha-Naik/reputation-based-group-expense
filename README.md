@@ -112,18 +112,32 @@ Example markdown to use after adding images:
 
 - Node.js 18+
 - npm
-- MongoDB connection string
+- Docker Desktop optional, for team setup
 - Google OAuth credentials if using Google sign-in
 
 ### Environment Variables
 
-Create a `.env` file based on `.env.example` and provide values for:
+Create a local env file based on `.env.example`.
 
-- `MONGODB_URL`
-- `NEXT_AUTH_SECRET`
+Use `.env.local` for local development and keep real secrets out of Git.
+
+Required variables:
+
+- `MONGODB_URI`
+- `NEXTAUTH_URL`
+- `NEXTAUTH_SECRET`
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
-- `NEXT_PUBLIC_APP_URL`
+
+Example:
+
+```env
+MONGODB_URI=mongodb://localhost:27017/reputation-group-expense
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=replace-with-a-long-random-secret
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+```
 
 ### Run Locally
 
@@ -133,6 +147,43 @@ npm run dev
 ```
 
 Open `http://localhost:3000`.
+
+## Docker Setup
+
+Docker is useful if you are working with teammates and want the same app and MongoDB setup across machines.
+
+### Files Used
+
+- `Dockerfile`
+- `docker-compose.yml`
+- `.dockerignore`
+- `.env.example`
+
+### Start With Docker
+
+1. Install Docker Desktop
+2. Create `.env.local` or `.env` using `.env.example`
+3. Make sure your Docker file is named exactly `Dockerfile`
+4. Run:
+
+```bash
+docker compose up --build
+```
+
+5. Open `http://localhost:3000`
+
+### What Docker Starts
+
+- `app`
+  Runs the Next.js application on port `3000`
+- `mongo`
+  Runs MongoDB on port `27017`
+
+### Notes For Teammates
+
+- Use placeholder values in `.env.example`
+- Put real secrets only in `.env.local` or your deployment environment
+- If you use Google sign-in locally, make sure your Google OAuth app allows `http://localhost:3000`
 
 ### Quality Checks
 

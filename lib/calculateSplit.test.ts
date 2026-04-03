@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateSplit } from "./calculateSplit.ts";
+import { calculateSplit } from "./calculateSplit";
 
 test("calculateSplit returns correct balances for equal split", () => {
   const expenses = [
