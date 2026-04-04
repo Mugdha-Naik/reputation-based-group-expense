@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildOutstandingBalances } from "./settlementLedger";
+import { buildOutstandingBalances } from "./settlementLedger.ts";
 
 test("completed transfers reduce outstanding balances", () => {
   const balances = buildOutstandingBalances(

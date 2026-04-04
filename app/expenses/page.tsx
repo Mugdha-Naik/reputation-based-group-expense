@@ -6,28 +6,6 @@ import PageContainer from "@/components/layout/PageContainer";
 import AddExpenseModal from '@/components/AddExpenseModal';
 
 function ExpensesRedirectContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const groupId = searchParams.get("groupId");
-
-  useEffect(() => {
-    if (groupId) {
-      router.replace(`/trip/${encodeURIComponent(groupId)}`);
-    }
-  }, [groupId, router]);
-
-  return (
-    <PageContainer>
-      <div className="mx-auto mt-8 max-w-md rounded-xl border border-gray-800 bg-gray-900 p-4">
-        <p className="text-sm text-gray-300">
-          Add Expense has moved. Open a specific group to continue.
-        </p>
-      </div>
-    </PageContainer>
-  );
-}
-
-export default function ExpensesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -51,6 +29,24 @@ export default function ExpensesPage() {
       </button>
 
       <AddExpenseModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+
+      {!groupId ? (
+        <PageContainer>
+          <div className="mx-auto mt-8 max-w-md rounded-xl border border-gray-800 bg-gray-900 p-4">
+            <p className="text-sm text-gray-300">
+              Add Expense has moved. Open a specific group to continue.
+            </p>
+          </div>
+        </PageContainer>
+      ) : null}
     </div>
+  );
+}
+
+export default function ExpensesPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-[#0F172A] via-blue-900 to-cyan-900" />}>
+      <ExpensesRedirectContent />
+    </Suspense>
   );
 }

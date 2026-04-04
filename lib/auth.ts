@@ -1,4 +1,4 @@
-import { NextAuthOptions } from "next-auth";
+import { Account, NextAuthOptions, Profile, User as NextAuthUser } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
@@ -77,7 +77,15 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async signIn({ user, account, profile }: { user: any; account: any; profile: any }) {
+    async signIn({
+      user,
+      account,
+      profile,
+    }: {
+      user: NextAuthUser;
+      account: Account | null;
+      profile?: Profile;
+    }) {
       if (account?.provider !== "google") {
         return true;
       }
