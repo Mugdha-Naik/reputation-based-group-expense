@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/db";
 import Group from "@/models/Group.model";
 import Expense from "@/models/Expense";
+import "@/models/user.model";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -64,9 +65,16 @@ export async function GET() {
     });
 
     return NextResponse.json(enrichedGroups, { status: 200 });
-  } catch {
+  } catch (error) {
     return NextResponse.json(
-      { message: "Failed to fetch groups" },
+      {
+        message:
+          process.env.NODE_ENV === "development"
+            ? error instanceof Error
+              ? error.message
+              : "Failed to fetch groups"
+            : "Failed to fetch groups",
+      },
       { status: 500 }
     );
   }
