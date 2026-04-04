@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import { getServerSession } from "next-auth";
 import connectDB from "@/lib/db";
 import Group from "@/models/Group.model";
-import authOptions from "@/lib/auth";
+import { authOptions } from "@/lib/auth";
 
 export async function GET(
   _req: NextRequest,

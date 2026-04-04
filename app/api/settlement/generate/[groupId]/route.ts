@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { getServerSession } from "next-auth";
-import authOptions from "@/lib/auth";
+import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/db";
 import Group from "@/models/Group.model";
 import { rebuildPendingSettlementsForGroup } from "@/lib/rebuildSettlements";

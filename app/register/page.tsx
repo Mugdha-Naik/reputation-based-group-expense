@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios, { AxiosError } from "axios";
 import { useRouter } from "next/navigation";
 import { FcGoogle } from "react-icons/fc";
@@ -13,9 +13,34 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleReady, setGoogleReady] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(true);
+  const [googleMessage, setGoogleMessage] = useState("");
 
   const router = useRouter();
   const normalizedEmail = email.trim().toLowerCase();
+
+  useEffect(() => {
+    const checkGoogleAuth = async () => {
+      try {
+        const response = await fetch("/api/auth/google-status");
+        const data = (await response.json()) as {
+          enabled?: boolean;
+          message?: string;
+        };
+
+        setGoogleReady(Boolean(data.enabled));
+        setGoogleMessage(data.message || "");
+      } catch {
+        setGoogleReady(false);
+        setGoogleMessage("Google sign-in status could not be checked right now.");
+      } finally {
+        setGoogleLoading(false);
+      }
+    };
+
+    void checkGoogleAuth();
+  }, []);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,6 +87,20 @@ export default function Register() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleRegister = async () => {
+    setError("");
+
+    if (!googleReady) {
+      setError(
+        googleMessage ||
+          "Google sign-in is not configured yet. Add Google credentials in .env.local."
+      );
+      return;
+    }
+
+    await signIn("google", { callbackUrl: "/dashboard" });
   };
 
   return (
@@ -130,12 +169,17 @@ export default function Register() {
 
         <button
           type="button"
+          disabled={googleLoading}
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-white py-2 text-black hover:bg-gray-200"
-          onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+          onClick={handleGoogleRegister}
         >
           <FcGoogle />
-          Continue with Google
+          {googleLoading ? "Checking Google Sign-In..." : "Continue with Google"}
         </button>
+
+        {!googleLoading && googleMessage && (
+          <p className="mt-3 text-center text-xs text-gray-400">{googleMessage}</p>
+        )}
 
         <p
           className="text-sm text-center mt-4 cursor-pointer text-blue-400"

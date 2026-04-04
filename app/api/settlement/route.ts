@@ -4,7 +4,7 @@ import connectDB from "@/lib/db";
 import Settlement from "@/models/Settlement";
 import User from "@/models/user.model";
 import { getServerSession } from "next-auth";
-import authOptions from "@/lib/auth";
+import { authOptions } from "@/lib/auth";
 import { buildReputationSummary } from "@/lib/reputation";
 import { rebuildPendingSettlementsForGroup } from "@/lib/rebuildSettlements";
 

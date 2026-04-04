@@ -5,7 +5,7 @@ import connectDB from "@/lib/db";
 import Expense from "@/models/Expense";
 import Group from "@/models/Group.model";
 import Notification from "@/models/Notification";
-import authOptions from "@/lib/auth";
+import { authOptions } from "@/lib/auth";
 import User from "@/models/user.model";
 import { rebuildPendingSettlementsForGroup } from "@/lib/rebuildSettlements";
 
@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
     const {
       groupId,
       title,
+      category,
       amount,
       paidBy,
       splitAmong,
@@ -47,6 +48,10 @@ export async function POST(request: NextRequest) {
       typeof title === "string" && title.trim().length > 0
         ? title.trim()
         : "Group Expense";
+    const resolvedCategory =
+      typeof category === "string" && category.trim().length > 0
+        ? category.trim()
+        : undefined;
 
     if (!groupId || !resolvedPaidBy || !resolvedParticipants) {
       return NextResponse.json(
@@ -130,6 +135,7 @@ export async function POST(request: NextRequest) {
     const expense = await Expense.create({
       groupId,
       title: resolvedTitle,
+      category: resolvedCategory,
       amount: resolvedAmount,
       paidBy: resolvedPaidBy,
       splitAmong: resolvedParticipants,

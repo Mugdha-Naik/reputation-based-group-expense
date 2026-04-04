@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import BadgeList from "@/components/BadgeList";
 import PageContainer from "@/components/layout/PageContainer";
-import ReputationBadge from "@/components/ReputationBadge";
+import XPProgressBar from "@/components/XPProgressBar";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
+import { getExperienceLevel, getProfileBadges } from "@/lib/experience";
 
 interface ProfileData {
   name: string;
@@ -70,6 +74,10 @@ export default function ProfilePage() {
     fetchProfile();
   }, [router, status]);
 
+  const reputationScore = form.reputationScore ?? session?.user?.reputationScore ?? 100;
+  const level = useMemo(() => getExperienceLevel(reputationScore), [reputationScore]);
+  const badges = useMemo(() => getProfileBadges(reputationScore), [reputationScore]);
+
   function updateField(field: keyof ProfileData, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
   }
@@ -132,76 +140,86 @@ export default function ProfilePage() {
 
   if (loading || status === "loading") {
     return (
-      <PageContainer className="flex items-center justify-center">
-        <p className="text-sm text-gray-300">Loading profile...</p>
+      <PageContainer className="flex items-center justify-center bg-[#07111f]">
+        <p className="text-sm text-slate-300">Loading profile...</p>
       </PageContainer>
     );
   }
 
   return (
-    <PageContainer>
-      <div className="mx-auto w-full max-w-2xl">
+    <PageContainer className="bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.16),_transparent_28%),linear-gradient(145deg,#020617_0%,#0f172a_48%,#111827_100%)]">
+      <div className="mx-auto w-full max-w-3xl">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-white">Your Profile</h1>
-            <p className="mt-1 text-sm text-gray-400">
-              Update your account details and payment identity.
+            <h1 className="text-3xl font-semibold text-white">Profile</h1>
+            <p className="mt-2 text-sm text-slate-300">
+              Keep your account details current and show your trust level clearly.
             </p>
           </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => router.push("/dashboard")}
-              className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-white hover:border-white"
-            >
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={() => router.push("/dashboard")}>
               Dashboard
-            </button>
-            <button
-              type="button"
-              onClick={() => signOut({ callbackUrl: "/" })}
-              className="rounded-lg border border-red-500/40 px-4 py-2 text-sm text-red-300 hover:border-red-400"
-            >
+            </Button>
+            <Button variant="ghost" onClick={() => signOut({ callbackUrl: "/" })}>
               Logout
-            </button>
+            </Button>
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-[0.9fr_1.1fr]">
-          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-            <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-lg font-semibold text-black">
-                {(form.name || session?.user?.name || "U").charAt(0).toUpperCase()}
+        <Card className="mx-auto overflow-hidden p-0">
+          <div className="bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.12),_transparent_30%),radial-gradient(circle_at_right,_rgba(139,92,246,0.16),_transparent_26%)] px-6 py-8 sm:px-8">
+            <div className="mx-auto max-w-xl text-center">
+              <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-[32px] bg-slate-950/70 p-1 shadow-[0_0_40px_rgba(59,130,246,0.18)] ring-1 ring-cyan-400/35">
+                {form.image ? (
+                  <img
+                    src={form.image}
+                    alt={form.name || "User"}
+                    className="h-full w-full rounded-[28px] object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center rounded-[28px] bg-gradient-to-br from-cyan-400/25 to-violet-500/25 text-4xl font-semibold text-white">
+                    {(form.name || session?.user?.name || "U").charAt(0).toUpperCase()}
+                  </div>
+                )}
               </div>
-              <div>
-                <p className="text-lg font-semibold text-white">{form.name || "User"}</p>
-                <p className="text-sm text-gray-400">{form.email}</p>
-              </div>
-            </div>
 
-            <div className="mt-5 space-y-3 text-sm text-gray-300">
-              <ReputationBadge initialScore={form.reputationScore ?? session?.user?.reputationScore ?? 100} />
+              <h2 className="mt-5 text-3xl font-semibold text-white">{form.name || "User"}</h2>
+              <p className="mt-2 text-sm text-cyan-200">{level.label} User</p>
 
-              <div className="rounded-xl border border-gray-800 bg-black p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-gray-500">UPI ID</p>
-                <p className="mt-2 break-all text-sm text-gray-200">
-                  {form.upiId || "Not added yet"}
+              <div className="mt-6 text-left">
+                <XPProgressBar
+                  currentXP={level.score}
+                  maxXP={100}
+                  level={level.label}
+                />
+                <p className="mt-3 text-center text-sm text-slate-300">
+                  {level.pointsToNext > 0
+                    ? `${level.pointsToNext} XP to unlock ${level.nextLevelLabel}`
+                    : "You are already at the highest trust tier."}
                 </p>
               </div>
 
-              <div className="rounded-xl border border-gray-800 bg-black p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Member Since</p>
-                <p className="mt-2 text-sm text-gray-200">
-                  {form.createdAt ? new Date(form.createdAt).toLocaleDateString() : "Recently"}
-                </p>
+              <div className="mt-6">
+                <BadgeList badges={badges} />
+              </div>
+
+              <div className="mt-6 grid gap-3 text-left sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/8 bg-slate-950/55 p-4">
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Current Level</p>
+                  <p className="mt-2 text-lg font-semibold text-white">{level.label}</p>
+                </div>
+                <div className="rounded-2xl border border-white/8 bg-slate-950/55 p-4">
+                  <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Member Since</p>
+                  <p className="mt-2 text-lg font-semibold text-white">
+                    {form.createdAt ? new Date(form.createdAt).toLocaleDateString() : "Recently"}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
-          <form
-            onSubmit={handleSubmit}
-            className="rounded-2xl border border-gray-800 bg-gray-900 p-5"
-          >
-            <div className="space-y-5">
+          <form onSubmit={handleSubmit} className="border-t border-white/10 px-6 py-6 sm:px-8">
+            <div className="grid gap-5 sm:grid-cols-2">
               <div>
                 <label htmlFor="profile-name" className="block text-sm font-medium text-white">
                   Name
@@ -211,7 +229,7 @@ export default function ProfilePage() {
                   type="text"
                   value={form.name}
                   onChange={(event) => updateField("name", event.target.value)}
-                  className="mt-2 w-full rounded-lg border border-gray-700 bg-black px-3 py-2.5 text-sm text-white outline-none focus:border-white"
+                  className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/40 focus:bg-slate-950"
                 />
               </div>
 
@@ -224,7 +242,7 @@ export default function ProfilePage() {
                   type="email"
                   value={form.email}
                   onChange={(event) => updateField("email", event.target.value)}
-                  className="mt-2 w-full rounded-lg border border-gray-700 bg-black px-3 py-2.5 text-sm text-white outline-none focus:border-white"
+                  className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/40 focus:bg-slate-950"
                 />
               </div>
 
@@ -238,7 +256,7 @@ export default function ProfilePage() {
                   placeholder="example@upi"
                   value={form.upiId || ""}
                   onChange={(event) => updateField("upiId", event.target.value)}
-                  className="mt-2 w-full rounded-lg border border-gray-700 bg-black px-3 py-2.5 text-sm text-white outline-none focus:border-white"
+                  className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/40 focus:bg-slate-950"
                 />
               </div>
 
@@ -252,32 +270,30 @@ export default function ProfilePage() {
                   placeholder="https://example.com/avatar.png"
                   value={form.image || ""}
                   onChange={(event) => updateField("image", event.target.value)}
-                  className="mt-2 w-full rounded-lg border border-gray-700 bg-black px-3 py-2.5 text-sm text-white outline-none focus:border-white"
+                  className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/40 focus:bg-slate-950"
                 />
               </div>
             </div>
 
             {error && (
-              <p className="mt-4 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+              <p className="mt-5 rounded-2xl border border-red-500/35 bg-red-500/10 px-4 py-3 text-sm text-red-200">
                 {error}
               </p>
             )}
 
             {success && (
-              <p className="mt-4 rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-300">
+              <p className="mt-5 rounded-2xl border border-emerald-500/35 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
                 {success}
               </p>
             )}
 
-            <button
-              type="submit"
-              disabled={saving}
-              className="mt-5 w-full rounded-lg bg-white px-4 py-3 text-sm font-semibold text-black transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {saving ? "Saving..." : "Save Profile"}
-            </button>
+            <div className="mt-6 flex justify-center">
+              <Button type="submit" className="min-w-48 py-3" disabled={saving}>
+                {saving ? "Saving..." : "Save Profile"}
+              </Button>
+            </div>
           </form>
-        </div>
+        </Card>
       </div>
     </PageContainer>
   );

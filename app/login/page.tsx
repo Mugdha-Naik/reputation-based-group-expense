@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
@@ -11,8 +11,33 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleReady, setGoogleReady] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(true);
+  const [googleMessage, setGoogleMessage] = useState("");
 
   const router = useRouter();
+
+  useEffect(() => {
+    const checkGoogleAuth = async () => {
+      try {
+        const response = await fetch("/api/auth/google-status");
+        const data = (await response.json()) as {
+          enabled?: boolean;
+          message?: string;
+        };
+
+        setGoogleReady(Boolean(data.enabled));
+        setGoogleMessage(data.message || "");
+      } catch {
+        setGoogleReady(false);
+        setGoogleMessage("Google sign-in status could not be checked right now.");
+      } finally {
+        setGoogleLoading(false);
+      }
+    };
+
+    void checkGoogleAuth();
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +66,20 @@ export default function Login() {
     }
 
     setLoading(false);
+  };
+
+  const handleGoogleLogin = async () => {
+    setError("");
+
+    if (!googleReady) {
+      setError(
+        googleMessage ||
+          "Google sign-in is not configured yet. Add Google credentials in .env.local."
+      );
+      return;
+    }
+
+    await signIn("google", { callbackUrl: "/dashboard" });
   };
 
   return (
@@ -97,12 +136,18 @@ export default function Login() {
         </div>
 
         <button
+          type="button"
+          disabled={googleLoading}
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-white py-2 text-black hover:bg-gray-200"
-          onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+          onClick={handleGoogleLogin}
         >
           <FcGoogle />
-          Sign in with Google
+          {googleLoading ? "Checking Google Sign-In..." : "Sign in with Google"}
         </button>
+
+        {!googleLoading && googleMessage && (
+          <p className="mt-3 text-center text-xs text-gray-400">{googleMessage}</p>
+        )}
     </CenteredCard>
   );
 }

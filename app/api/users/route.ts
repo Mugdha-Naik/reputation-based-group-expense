@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import authOptions from "@/lib/auth";
+import { authOptions } from "@/lib/auth"; // Updated to use named import
 import connectDB from "@/lib/db";
 import User from "@/models/user.model";
 

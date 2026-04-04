@@ -4,7 +4,7 @@
 import connectDB from "@/lib/db";
 import Group from "@/models/Group.model";
 import {getServerSession} from "next-auth";
-import authOptions from "@/lib/auth";
+import { authOptions } from "@/lib/auth"; // Updated to use named import
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request){

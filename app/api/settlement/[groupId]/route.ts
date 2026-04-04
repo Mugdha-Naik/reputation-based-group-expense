@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 import connectDB from "@/lib/db";
 import Settlement from "@/models/Settlement";
 import Group from "@/models/Group.model";
-import authOptions from "@/lib/auth";
+import { authOptions } from "@/lib/auth";
 import { getServerSession } from "next-auth";
 
 export async function GET(

@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 interface IExpense {
   groupId: mongoose.Types.ObjectId;
   title: string;
+  category?: string;
   amount: number;
   paidBy: string;
   splitAmong: string[];
@@ -26,6 +27,11 @@ const expenseSchema = new mongoose.Schema<IExpense>(
       required: true,
       trim: true,
       minlength: 1,
+    },
+    category: {
+      type: String,
+      trim: true,
+      default: undefined,
     },
     amount: {
       type: Number,
