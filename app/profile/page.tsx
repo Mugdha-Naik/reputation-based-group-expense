@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { FiEdit2 } from "react-icons/fi";
 import BadgeList from "@/components/BadgeList";
 import PageContainer from "@/components/layout/PageContainer";
 import XPProgressBar from "@/components/XPProgressBar";
@@ -19,6 +20,9 @@ interface ProfileData {
   createdAt?: string;
 }
 
+const MAX_PROFILE_IMAGE_DIMENSION = 512;
+const PROFILE_IMAGE_QUALITY = 0.82;
+
 export default function ProfilePage() {
   const { data: session, status, update } = useSession();
   const router = useRouter();
@@ -33,6 +37,16 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  function getSessionSafeImage(image?: string) {
+    if (!image) return undefined;
+    const trimmed = image.trim();
+    if (!trimmed || trimmed.startsWith("data:") || trimmed.length > 2048) {
+      return undefined;
+    }
+    return trimmed;
+  }
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -82,6 +96,69 @@ export default function ProfilePage() {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
+  function handleImagePick() {
+    fileInputRef.current?.click();
+  }
+
+  function compressImage(file: File) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const source = typeof reader.result === "string" ? reader.result : "";
+        if (!source) {
+          reject(new Error("Selected image could not be loaded."));
+          return;
+        }
+
+        const image = new Image();
+        image.onload = () => {
+          const scale = Math.min(
+            1,
+            MAX_PROFILE_IMAGE_DIMENSION / Math.max(image.width, image.height)
+          );
+          const targetWidth = Math.max(1, Math.round(image.width * scale));
+          const targetHeight = Math.max(1, Math.round(image.height * scale));
+
+          const canvas = document.createElement("canvas");
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+
+          const context = canvas.getContext("2d");
+          if (!context) {
+            reject(new Error("Selected image could not be processed."));
+            return;
+          }
+
+          context.drawImage(image, 0, 0, targetWidth, targetHeight);
+          const compressed = canvas.toDataURL("image/jpeg", PROFILE_IMAGE_QUALITY);
+          resolve(compressed);
+        };
+        image.onerror = () => reject(new Error("Selected image could not be processed."));
+        image.src = source;
+      };
+      reader.onerror = () => reject(new Error("Selected image could not be loaded."));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const result = await compressImage(file);
+      setError("");
+      setSuccess("");
+      updateField("image", result);
+    } catch (imageError) {
+      const message =
+        imageError instanceof Error ? imageError.message : "Selected image could not be loaded.";
+      setError(message);
+    }
+
+    event.target.value = "";
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -123,7 +200,7 @@ export default function ProfilePage() {
           ...session?.user,
           name: data.user.name,
           email: data.user.email,
-          image: data.user.image,
+          image: getSessionSafeImage(data.user.image),
           upiId: data.user.upiId,
         },
       });
@@ -169,18 +246,37 @@ export default function ProfilePage() {
         <Card className="mx-auto overflow-hidden p-0">
           <div className="bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.12),_transparent_30%),radial-gradient(circle_at_right,_rgba(139,92,246,0.16),_transparent_26%)] px-6 py-8 sm:px-8">
             <div className="mx-auto max-w-xl text-center">
-              <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-[32px] bg-slate-950/70 p-1 shadow-[0_0_40px_rgba(59,130,246,0.18)] ring-1 ring-cyan-400/35">
-                {form.image ? (
-                  <img
-                    src={form.image}
-                    alt={form.name || "User"}
-                    className="h-full w-full rounded-[28px] object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center rounded-[28px] bg-gradient-to-br from-cyan-400/25 to-violet-500/25 text-4xl font-semibold text-white">
-                    {(form.name || session?.user?.name || "U").charAt(0).toUpperCase()}
-                  </div>
-                )}
+              <div className="relative mx-auto h-28 w-28">
+                <div className="flex h-full w-full items-center justify-center rounded-[32px] bg-slate-950/70 p-1 shadow-[0_0_40px_rgba(59,130,246,0.18)] ring-1 ring-cyan-400/35">
+                  {form.image ? (
+                    <img
+                      src={form.image}
+                      alt={form.name || "User"}
+                      className="h-full w-full rounded-[28px] object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center rounded-[28px] bg-gradient-to-br from-cyan-400/25 to-violet-500/25 text-4xl font-semibold text-white">
+                      {(form.name || session?.user?.name || "U").charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleImagePick}
+                  className="absolute bottom-0 right-0 flex h-10 w-10 items-center justify-center rounded-full border border-cyan-300/35 bg-slate-950/90 text-cyan-100 shadow-[0_10px_24px_rgba(14,165,233,0.22)] transition hover:scale-105 hover:bg-slate-900"
+                  aria-label="Choose profile photo"
+                >
+                  <FiEdit2 className="text-base" />
+                </button>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
               </div>
 
               <h2 className="mt-5 text-3xl font-semibold text-white">{form.name || "User"}</h2>
@@ -272,6 +368,10 @@ export default function ProfilePage() {
                   onChange={(event) => updateField("image", event.target.value)}
                   className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/40 focus:bg-slate-950"
                 />
+                <p className="mt-2 text-xs text-slate-400">
+                  Or click the pencil on the avatar to choose a photo from your device. We
+                  compress picked images automatically before saving.
+                </p>
               </div>
             </div>
 

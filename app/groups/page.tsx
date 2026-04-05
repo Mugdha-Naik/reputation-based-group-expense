@@ -134,6 +134,7 @@ export default function GroupsPage() {
   const [groups, setGroups] = useState<GroupSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reputationScore, setReputationScore] = useState(session?.user?.reputationScore ?? 97);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -150,11 +151,21 @@ export default function GroupsPage() {
         setLoading(true);
         setError("");
 
-        const res = await fetch("/api/groups/my", { credentials: "include" });
-        const data = await res.json();
+        const [groupsRes, reputationRes] = await Promise.all([
+          fetch("/api/groups/my", { credentials: "include" }),
+          fetch("/api/reputation", { credentials: "include" }),
+        ]);
+        const data = await groupsRes.json();
 
-        if (!res.ok) {
+        if (!groupsRes.ok) {
           throw new Error(data?.message || "Failed to fetch groups");
+        }
+
+        if (reputationRes.ok) {
+          const reputationData = await reputationRes.json();
+          if (typeof reputationData?.score === "number") {
+            setReputationScore(reputationData.score);
+          }
         }
 
         setGroups(Array.isArray(data) ? data : []);
@@ -169,7 +180,6 @@ export default function GroupsPage() {
   }, [router, status]);
 
   const greetingName = getGreetingName(session?.user?.name);
-  const reputationScore = session?.user?.reputationScore ?? 97;
 
   const stats = useMemo(() => {
     const totalGroups = groups.length;

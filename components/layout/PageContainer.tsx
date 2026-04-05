@@ -7,7 +7,7 @@ interface PageContainerProps {
 
 export default function PageContainer({ children, className = "" }: PageContainerProps) {
   return (
-    <div className={`min-h-screen bg-black text-white px-4 py-4 sm:px-6 sm:py-6 ${className}`.trim()}>
+    <div className={`min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] px-4 py-4 sm:px-6 sm:py-6 ${className}`.trim()}>
       {children}
     </div>
   );

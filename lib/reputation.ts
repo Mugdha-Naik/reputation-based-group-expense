@@ -1,21 +1,31 @@
 const DEFAULT_BASE_SCORE = 100;
 const DEFAULT_COMPLETED_REWARD = 2;
-const DEFAULT_PENDING_PENALTY = 3;
+const DEFAULT_PENDING_PENALTY = 4;
+const DEFAULT_COMPLETED_AMOUNT_DIVISOR = 400;
+const DEFAULT_PENDING_AMOUNT_DIVISOR = 200;
+const MAX_COMPLETED_BONUS = 12;
+const MAX_PENDING_IMPACT = 60;
 const MIN_REPUTATION_SCORE = 0;
 const MAX_REPUTATION_SCORE = 100;
 
 interface ReputationInput {
   completedSettlements: number;
   pendingSettlements: number;
+  completedAmount?: number;
+  pendingAmount?: number;
   baseScore?: number;
   completedReward?: number;
   pendingPenalty?: number;
+  completedAmountDivisor?: number;
+  pendingAmountDivisor?: number;
 }
 
 interface ReputationSummary {
   score: number;
   completedSettlements: number;
   pendingSettlements: number;
+  completedAmount: number;
+  pendingAmount: number;
 }
 
 export function getReputationTone(score: number): string {
@@ -48,20 +58,35 @@ export function clampReputation(score: number): number {
 export function calculateReputation({
   completedSettlements,
   pendingSettlements,
+  completedAmount = 0,
+  pendingAmount = 0,
   baseScore = DEFAULT_BASE_SCORE,
   completedReward = DEFAULT_COMPLETED_REWARD,
   pendingPenalty = DEFAULT_PENDING_PENALTY,
+  completedAmountDivisor = DEFAULT_COMPLETED_AMOUNT_DIVISOR,
+  pendingAmountDivisor = DEFAULT_PENDING_AMOUNT_DIVISOR,
 }: ReputationInput): number {
-  if (completedSettlements < 0 || pendingSettlements < 0) {
-    throw new Error("Settlement counts cannot be negative");
+  if (
+    completedSettlements < 0 ||
+    pendingSettlements < 0 ||
+    completedAmount < 0 ||
+    pendingAmount < 0
+  ) {
+    throw new Error("Settlement metrics cannot be negative");
   }
 
+  const completedImpact = Math.min(
+    MAX_COMPLETED_BONUS,
+    completedSettlements * completedReward + completedAmount / completedAmountDivisor
+  );
+  const pendingImpact = Math.min(
+    MAX_PENDING_IMPACT,
+    pendingSettlements * pendingPenalty + pendingAmount / pendingAmountDivisor
+  );
   const rawScore =
-    baseScore +
-    completedSettlements * completedReward -
-    pendingSettlements * pendingPenalty;
+    baseScore + completedImpact - pendingImpact;
 
-  return clampReputation(rawScore);
+  return clampReputation(Math.round(rawScore));
 }
 
 export function buildReputationSummary(input: ReputationInput): ReputationSummary {
@@ -69,6 +94,8 @@ export function buildReputationSummary(input: ReputationInput): ReputationSummar
     score: calculateReputation(input),
     completedSettlements: input.completedSettlements,
     pendingSettlements: input.pendingSettlements,
+    completedAmount: input.completedAmount ?? 0,
+    pendingAmount: input.pendingAmount ?? 0,
   };
 }
 
