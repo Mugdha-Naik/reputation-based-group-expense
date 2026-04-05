@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import mongoose from "mongoose";
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/db";
 import Settlement from "@/models/Settlement";
@@ -17,8 +18,10 @@ export async function GET() {
     await connectDB();
 
     const userId = session.user.id;
+    const userObjectId = new mongoose.Types.ObjectId(userId);
 
-    const [completedSettlements, pendingSettlements] = await Promise.all([
+    const [completedSettlements, pendingSettlements, completedAmountAgg, pendingAmountAgg] =
+      await Promise.all([
       Settlement.countDocuments({
         fromUser: userId,
         status: "completed",
@@ -27,11 +30,24 @@ export async function GET() {
         fromUser: userId,
         status: "pending",
       }),
+      Settlement.aggregate([
+        { $match: { fromUser: userObjectId, status: "completed" } },
+        { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
+      ]),
+      Settlement.aggregate([
+        { $match: { fromUser: userObjectId, status: "pending" } },
+        { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
+      ]),
     ]);
+
+    const completedAmount = completedAmountAgg[0]?.totalAmount ?? 0;
+    const pendingAmount = pendingAmountAgg[0]?.totalAmount ?? 0;
 
     const summary = buildReputationSummary({
       completedSettlements,
       pendingSettlements,
+      completedAmount,
+      pendingAmount,
     });
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -52,6 +68,8 @@ export async function GET() {
         score: updatedUser.reputationScore,
         completedSettlements: summary.completedSettlements,
         pendingSettlements: summary.pendingSettlements,
+        completedAmount: summary.completedAmount,
+        pendingAmount: summary.pendingAmount,
       },
       { status: 200 }
     );

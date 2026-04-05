@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import PageContainer from "@/components/layout/PageContainer";
+import { useEffect as useThemeEffect, useState as useThemeState } from "react";
+import GroupQRCode from "@/components/GroupQRCode";
 
 interface GroupMember {
   _id: string;
@@ -82,104 +84,137 @@ function ReputationRing({ score }: { score: number }) {
   );
 }
 
+
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [groups, setGroups] = useState<Group[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [groupsLoading, setGroupsLoading] = useState(true);
+  const [reputationScore, setReputationScore] = useState<number>(session?.user?.reputationScore ?? 97);
+  const [reputationLoading, setReputationLoading] = useState(true);
   const [error, setError] = useState("");
+  const [qrGroup, setQrGroup] = useState<Group | null>(null);
 
+  // Fetch groups (summary only) as soon as authenticated
   useEffect(() => {
     if (status === "unauthenticated") {
       router.replace("/login");
       return;
     }
-
-    if (status !== "authenticated") {
-      return;
-    }
-
+    if (status !== "authenticated") return;
     let ignore = false;
-
     const fetchGroups = async () => {
       try {
-        setLoading(true);
+        setGroupsLoading(true);
         setError("");
-
-        const res = await fetch("/api/groups/my", { credentials: "include" });
+        // Only fetch summary data for dashboard
+        const res = await fetch("/api/groups/my?groupLimit=10&expenseLimit=1", { credentials: "include" });
         const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data?.message || "Failed to fetch groups");
-        }
-
-        if (!ignore) {
-          setGroups(Array.isArray(data) ? data : []);
-        }
+        if (!res.ok) throw new Error(data?.message || "Failed to fetch groups");
+        if (!ignore) setGroups(Array.isArray(data) ? data : []);
       } catch (fetchError) {
-        if (!ignore) {
-          setError(fetchError instanceof Error ? fetchError.message : "Failed to fetch groups");
-        }
+        if (!ignore) setError(fetchError instanceof Error ? fetchError.message : "Failed to fetch groups");
       } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
+        if (!ignore) setGroupsLoading(false);
       }
     };
-
     fetchGroups();
-
-    return () => {
-      ignore = true;
-    };
+    return () => { ignore = true; };
   }, [router, status]);
+
+  // Fetch reputation in parallel
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    let ignore = false;
+    const fetchReputation = async () => {
+      try {
+        setReputationLoading(true);
+        const res = await fetch("/api/reputation", { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          if (!ignore && typeof data?.score === "number") setReputationScore(data.score);
+        }
+      } finally {
+        if (!ignore) setReputationLoading(false);
+      }
+    };
+    fetchReputation();
+    return () => { ignore = true; };
+  }, [status]);
 
   const stats = useMemo(() => {
     const totalGroups = groups.length;
     const totalExpenses = groups.reduce((sum, group) => sum + (group.totalExpense || 0), 0);
-    const reputationScore = session?.user?.reputationScore ?? 97;
-
     return {
       totalGroups,
       totalExpenses,
       reputationScore,
     };
-  }, [groups, session?.user?.reputationScore]);
+  }, [groups, reputationScore]);
+
+  // Detect light/dark mode (if you have a theme context, otherwise fallback to localStorage or default)
+  const [isDayMode, setIsDayMode] = useThemeState(true);
+  useThemeEffect(() => {
+    const storedTheme = typeof window !== "undefined" ? window.localStorage.getItem("home-theme") : null;
+    setIsDayMode(storedTheme === "day" || !storedTheme);
+  }, []);
 
   return (
-    <PageContainer className="bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),_transparent_24%),radial-gradient(circle_at_right,_rgba(139,92,246,0.12),_transparent_22%),linear-gradient(180deg,#07111f_0%,#0f172a_48%,#111827_100%)] text-white">
+    <PageContainer
+      className={isDayMode
+        ? "bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.07),_transparent_24%),radial-gradient(circle_at_right,_rgba(37,99,235,0.04),_transparent_22%),linear-gradient(180deg,#F3F4EF_0%,#E9ECE6_48%,#F5F7F2_100%)] text-[var(--color-text)]"
+        : "bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),_transparent_24%),radial-gradient(circle_at_right,_rgba(139,92,246,0.12),_transparent_22%),linear-gradient(180deg,#07111f_0%,#0f172a_48%,#111827_100%)] text-white"}
+    >
       <div className="mx-auto max-w-[920px]">
-        <section className="relative overflow-hidden rounded-[36px] border border-white/10 bg-white/6 px-6 py-6 shadow-[0_24px_90px_rgba(2,6,23,0.36)] backdrop-blur-xl sm:px-8 sm:py-8">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.18),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(139,92,246,0.15),_transparent_22%)]" />
+        <section className={isDayMode
+          ? "relative overflow-hidden rounded-[36px] border border-[#E0E3DB] bg-[#F8F9F6] px-6 py-6 shadow-[0_8px_32px_rgba(37,99,235,0.06)] sm:px-8 sm:py-8"
+          : "relative overflow-hidden rounded-[36px] border border-white/10 bg-white/6 px-6 py-6 shadow-[0_24px_90px_rgba(2,6,23,0.36)] backdrop-blur-xl sm:px-8 sm:py-8"}>
+          <div className={isDayMode
+            ? "absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(37,99,235,0.10),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(37,99,235,0.08),_transparent_22%)]"
+            : "absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.18),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(139,92,246,0.15),_transparent_22%)]"} />
           <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+              <h1 className={isDayMode ? "text-3xl font-semibold tracking-tight text-[var(--color-text)] sm:text-4xl" : "text-3xl font-semibold tracking-tight text-white sm:text-4xl"}>
                 Your Groups
               </h1>
-              <p className="mt-2 text-sm text-slate-300">
+              <p className={isDayMode ? "mt-2 text-sm text-[var(--color-text-secondary)]" : "mt-2 text-sm text-slate-300"}>
                 Welcome back, {getGreetingName(session?.user?.name)}
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-[28px] border border-white/12 bg-slate-950/35 px-4 py-3 shadow-[0_12px_36px_rgba(15,23,42,0.28)]">
-                <div className="flex items-center gap-3">
-                  <ReputationRing score={stats.reputationScore} />
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
-                      Reputation
-                    </p>
-                    <p className="mt-1 text-sm font-medium text-white">
-                      {stats.reputationScore}/100
-                    </p>
+              <div className={isDayMode
+                ? "rounded-[28px] border border-[#E0E3DB] bg-[#F3F4EF] px-4 py-3 shadow-[0_4px_16px_rgba(37,99,235,0.04)] min-w-[140px] min-h-[64px] flex items-center"
+                : "rounded-[28px] border border-white/12 bg-slate-950/35 px-4 py-3 shadow-[0_12px_36px_rgba(15,23,42,0.28)] min-w-[140px] min-h-[64px] flex items-center"}>
+                {reputationLoading ? (
+                  <div className="flex items-center gap-3 animate-pulse">
+                    <div className={isDayMode ? "h-16 w-16 rounded-full bg-[var(--color-bg)]" : "h-16 w-16 rounded-full bg-slate-800"} />
+                    <div>
+                      <div className={isDayMode ? "h-3 w-16 rounded bg-[var(--color-bg)] mb-2" : "h-3 w-16 rounded bg-slate-800 mb-2"} />
+                      <div className={isDayMode ? "h-3 w-10 rounded bg-[var(--color-bg)]" : "h-3 w-10 rounded bg-slate-800"} />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <ReputationRing score={stats.reputationScore} />
+                    <div>
+                      <p className={isDayMode ? "text-xs uppercase tracking-[0.18em] text-[var(--color-accent-blue)]" : "text-xs uppercase tracking-[0.18em] text-slate-400"}>
+                        Reputation
+                      </p>
+                      <p className={isDayMode ? "mt-1 text-sm font-medium text-[var(--color-text)]" : "mt-1 text-sm font-medium text-white"}>
+                        {stats.reputationScore}/100
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <button
                 type="button"
                 onClick={() => router.push("/users")}
-                className="rounded-full border border-white/12 bg-white/8 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/12"
+                className={isDayMode
+                  ? "rounded-full border border-[#E0E3DB] bg-[#F8F9F6] px-4 py-3 text-sm font-medium text-[var(--color-accent-blue)] transition hover:border-[var(--color-accent-blue)] hover:text-[var(--color-accent-blue-dark)]"
+                  : "rounded-full border border-white/12 bg-white/8 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/12"}
               >
                 Users
               </button>
@@ -187,7 +222,9 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={() => router.push("/groups/create")}
-                className="rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-violet-500 px-5 py-3 text-sm font-medium text-white shadow-[0_14px_34px_rgba(59,130,246,0.28)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_44px_rgba(99,102,241,0.34)]"
+                className={isDayMode
+                  ? "rounded-full bg-[var(--color-accent-blue)] px-5 py-3 text-sm font-medium text-white shadow-[0_2px_8px_rgba(37,99,235,0.10)] transition duration-300 hover:-translate-y-0.5 hover:bg-[var(--color-accent-blue-dark)]"
+                  : "rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-violet-500 px-5 py-3 text-sm font-medium text-white shadow-[0_14px_34px_rgba(59,130,246,0.28)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_44px_rgba(99,102,241,0.34)]"}
               >
                 + Create Group
               </button>
@@ -195,7 +232,9 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={() => router.push("/profile")}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/14 bg-white/8 text-sm font-semibold text-white transition hover:bg-white/12"
+                className={isDayMode
+                  ? "flex h-11 w-11 items-center justify-center rounded-full border border-[#E0E3DB] bg-[#F8F9F6] text-sm font-semibold text-[var(--color-accent-blue)] transition hover:border-[var(--color-accent-blue)] hover:text-[var(--color-accent-blue-dark)]"
+                  : "flex h-11 w-11 items-center justify-center rounded-full border border-white/14 bg-white/8 text-sm font-semibold text-white transition hover:bg-white/12"}
               >
                 {(session?.user?.name || "N").charAt(0).toUpperCase()}
               </button>
@@ -203,63 +242,65 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {loading && (
+        {groupsLoading && (
           <div className="mt-6 rounded-[24px] border border-white/10 bg-white/6 px-5 py-4 text-sm text-slate-300 backdrop-blur-xl">
             Loading your groups...
           </div>
         )}
 
-        {!loading && (
+        {!groupsLoading && (
           <section className="mt-8 grid gap-4 md:grid-cols-3">
-            <div className="group rounded-full border border-white/10 bg-white/7 px-5 py-4 shadow-[0_12px_40px_rgba(2,6,23,0.22)] backdrop-blur-xl transition duration-300 hover:scale-[1.02] hover:border-blue-400/25 hover:shadow-[0_16px_50px_rgba(59,130,246,0.16)]">
+            <div className={isDayMode
+              ? "group rounded-full border border-transparent bg-gradient-to-r from-[var(--color-accent-blue)] via-blue-400 to-violet-400 px-5 py-4 shadow-[0_8px_32px_rgba(37,99,235,0.08)] transition duration-300 hover:scale-[1.02]"
+              : "group rounded-full border border-white/10 bg-white/7 px-5 py-4 shadow-[0_12px_40px_rgba(2,6,23,0.22)] backdrop-blur-xl transition duration-300 hover:scale-[1.02] hover:border-blue-400/25 hover:shadow-[0_16px_50px_rgba(59,130,246,0.16)]"}>
               <div className="flex items-center gap-4">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-500/16 text-lg">
+                <div className={isDayMode ? "flex h-11 w-11 items-center justify-center rounded-full bg-white/30 text-lg" : "flex h-11 w-11 items-center justify-center rounded-full bg-blue-500/16 text-lg"}>
                   G
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Total Groups</p>
-                  <p className="mt-1 text-2xl font-semibold text-white">{stats.totalGroups}</p>
+                  <p className={isDayMode ? "text-xs uppercase tracking-[0.18em] text-white/80" : "text-xs uppercase tracking-[0.18em] text-slate-400"}>Total Groups</p>
+                  <p className={isDayMode ? "mt-1 text-2xl font-semibold text-white" : "mt-1 text-2xl font-semibold text-white"}>{stats.totalGroups}</p>
                 </div>
               </div>
             </div>
 
-            <div className="group rounded-full border border-white/10 bg-white/7 px-5 py-4 shadow-[0_12px_40px_rgba(2,6,23,0.22)] backdrop-blur-xl transition duration-300 hover:scale-[1.02] hover:border-violet-400/25 hover:shadow-[0_16px_50px_rgba(139,92,246,0.16)]">
+            <div className={isDayMode
+              ? "group rounded-full border border-transparent bg-gradient-to-r from-[var(--color-accent-blue)] via-blue-400 to-violet-400 px-5 py-4 shadow-[0_8px_32px_rgba(37,99,235,0.08)] transition duration-300 hover:scale-[1.02]"
+              : "group rounded-full border border-white/10 bg-white/7 px-5 py-4 shadow-[0_12px_40px_rgba(2,6,23,0.22)] backdrop-blur-xl transition duration-300 hover:scale-[1.02] hover:border-violet-400/25 hover:shadow-[0_16px_50px_rgba(139,92,246,0.16)]"}>
               <div className="flex items-center gap-4">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-violet-500/16 text-lg">
+                <div className={isDayMode ? "flex h-11 w-11 items-center justify-center rounded-full bg-white/30 text-lg" : "flex h-11 w-11 items-center justify-center rounded-full bg-violet-500/16 text-lg"}>
                   R
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Total Expenses</p>
-                  <p className="mt-1 text-2xl font-semibold text-white">
-                    {currency.format(stats.totalExpenses)}
-                  </p>
+                  <p className={isDayMode ? "text-xs uppercase tracking-[0.18em] text-white/80" : "text-xs uppercase tracking-[0.18em] text-slate-400"}>Total Expenses</p>
+                  <p className={isDayMode ? "mt-1 text-2xl font-semibold text-white" : "mt-1 text-2xl font-semibold text-white"}>{currency.format(stats.totalExpenses)}</p>
                 </div>
               </div>
             </div>
 
-            <div className="group rounded-full border border-white/10 bg-white/7 px-5 py-4 shadow-[0_12px_40px_rgba(2,6,23,0.22)] backdrop-blur-xl transition duration-300 hover:scale-[1.02] hover:border-sky-400/25 hover:shadow-[0_16px_50px_rgba(96,165,250,0.16)]">
+            <div className={isDayMode
+              ? "group rounded-full border border-transparent bg-gradient-to-r from-[var(--color-accent-blue)] via-blue-400 to-violet-400 px-5 py-4 shadow-[0_8px_32px_rgba(37,99,235,0.08)] transition duration-300 hover:scale-[1.02]"
+              : "group rounded-full border border-white/10 bg-white/7 px-5 py-4 shadow-[0_12px_40px_rgba(2,6,23,0.22)] backdrop-blur-xl transition duration-300 hover:scale-[1.02] hover:border-sky-400/25 hover:shadow-[0_16px_50px_rgba(96,165,250,0.16)]"}>
               <div className="flex items-center gap-4">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-sky-500/16 text-lg">
+                <div className={isDayMode ? "flex h-11 w-11 items-center justify-center rounded-full bg-white/30 text-lg" : "flex h-11 w-11 items-center justify-center rounded-full bg-sky-500/16 text-lg"}>
                   S
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Reputation Score</p>
-                  <p className="mt-1 text-2xl font-semibold text-white">
-                    {stats.reputationScore}/100
-                  </p>
+                  <p className={isDayMode ? "text-xs uppercase tracking-[0.18em] text-white/80" : "text-xs uppercase tracking-[0.18em] text-slate-400"}>Reputation Score</p>
+                  <p className={isDayMode ? "mt-1 text-2xl font-semibold text-white" : "mt-1 text-2xl font-semibold text-white"}>{stats.reputationScore}/100</p>
                 </div>
               </div>
             </div>
           </section>
         )}
 
-        {error && !loading ? (
+        {error && !groupsLoading ? (
           <div className="mt-6 rounded-[24px] border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {error}
           </div>
         ) : null}
 
-        {!loading && !error && groups.length === 0 ? (
+        {!groupsLoading && !error && groups.length === 0 ? (
           <div className="mt-8 rounded-[32px] border border-white/10 bg-white/6 px-6 py-12 text-center shadow-[0_20px_70px_rgba(2,6,23,0.25)] backdrop-blur-xl">
             <h2 className="text-2xl font-semibold text-white">No groups yet</h2>
             <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-300">
@@ -275,7 +316,7 @@ export default function Dashboard() {
           </div>
         ) : null}
 
-        {!loading && !error && groups.length > 0 ? (
+        {!groupsLoading && !error && groups.length > 0 ? (
           <section className="mt-7 grid gap-4 md:grid-cols-2">
             {groups.map((group) => {
               const statusLabel = getGroupStatus(group);
@@ -286,9 +327,14 @@ export default function Dashboard() {
               return (
                 <div
                   key={group._id}
-                  className="group relative overflow-hidden rounded-[22px] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.07),rgba(255,255,255,0.04))] p-3.5 text-left shadow-[0_18px_65px_rgba(2,6,23,0.26)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-white/16 hover:shadow-[0_22px_80px_rgba(59,130,246,0.18)]"
+                  className={isDayMode
+                    ? "group relative overflow-hidden rounded-[22px] border border-[#D1D5DB] bg-gradient-to-br from-[var(--color-accent-blue)]/10 via-white/80 to-violet-200/30 p-3.5 text-left shadow-[0_8px_32px_rgba(37,99,235,0.06)] transition duration-300 hover:-translate-y-1 hover:border-[var(--color-accent-blue)]"
+                    : "group relative overflow-hidden rounded-[22px] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.07),rgba(255,255,255,0.04))] p-3.5 text-left shadow-[0_18px_65px_rgba(2,6,23,0.26)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-white/16 hover:shadow-[0_22px_80px_rgba(59,130,246,0.18)]"}
                 >
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.14),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(139,92,246,0.12),_transparent_22%)] opacity-80 transition duration-300 group-hover:scale-105 group-hover:opacity-100" />
+                  <div className={isDayMode
+                    ? "absolute inset-0 bg-gradient-to-br from-[var(--color-accent-blue)]/10 via-white/80 to-violet-200/30 opacity-90 transition duration-300 group-hover:scale-105 group-hover:opacity-100"
+                    : "absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.14),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(139,92,246,0.12),_transparent_22%)] opacity-80 transition duration-300 group-hover:scale-105 group-hover:opacity-100"}
+                  />
                   <div
                     className="relative cursor-pointer"
                     onClick={() => router.push(`/groups/${group._id}`)}
@@ -375,9 +421,21 @@ export default function Dashboard() {
                       <p className="text-[13px] text-slate-400">
                         {group.expenseCount || 0} expenses tracked
                       </p>
-                      <span className="translate-y-1 text-[13px] font-medium text-white opacity-0 transition duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-                        Open Group {"->"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="translate-y-1 text-[13px] font-medium text-white opacity-0 transition duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+                          Open Group {"->"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setQrGroup(group);
+                          }}
+                          className="rounded-full border border-white/15 bg-slate-950/60 px-3 py-1.5 text-xs font-medium text-slate-100 backdrop-blur-md transition hover:border-blue-300/40 hover:bg-blue-500/20 hover:text-white"
+                        >
+                          QR Code
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -386,6 +444,49 @@ export default function Dashboard() {
           </section>
         ) : null}
       </div>
+
+      {qrGroup ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-md"
+          onClick={() => setQrGroup(null)}
+        >
+          <div
+            className="relative w-full max-w-md rounded-[28px] border border-white/12 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(17,24,39,0.92))] p-6 shadow-[0_28px_100px_rgba(2,6,23,0.5)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setQrGroup(null)}
+              className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg text-slate-200 transition hover:bg-white/10 hover:text-white"
+              aria-label="Close QR popup"
+            >
+              x
+            </button>
+
+            <div className="pr-12">
+              <p className="text-xs uppercase tracking-[0.22em] text-sky-300">Join Group</p>
+              <h2 className="mt-2 text-2xl font-semibold text-white">{qrGroup.name}</h2>
+              <p className="mt-2 text-sm text-slate-300">
+                Scan this QR code to open the join link for this group.
+              </p>
+            </div>
+
+            <div className="mt-6 rounded-[24px] border border-white/10 bg-slate-900/70 p-5">
+              <GroupQRCode groupId={qrGroup._id} size={220} />
+            </div>
+
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => router.push(`/join/${qrGroup._id}`)}
+                className="rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-violet-500 px-5 py-2.5 text-sm font-medium text-white shadow-[0_14px_34px_rgba(59,130,246,0.28)] transition hover:-translate-y-0.5"
+              >
+                Open Join Page
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </PageContainer>
   );
 }

@@ -1,9 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import mongoose from "mongoose";
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/db";
 import User from "@/models/user.model";
 import Settlement from "@/models/Settlement";
+import { buildReputationSummary } from "@/lib/reputation";
+
+const MAX_PROFILE_IMAGE_LENGTH = 350_000;
+
+function sanitizeProfileImage(image: unknown): string | undefined {
+  if (typeof image !== "string") {
+    return undefined;
+  }
+
+  const trimmed = image.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const isRemoteUrl = /^https?:\/\//i.test(trimmed);
+  const isDataImage = /^data:image\/(png|jpe?g|webp|gif);base64,/i.test(trimmed);
+
+  if (!isRemoteUrl && !isDataImage) {
+    throw new Error("Profile image must be a valid URL or image upload.");
+  }
+
+  if (trimmed.length > MAX_PROFILE_IMAGE_LENGTH) {
+    throw new Error("Profile image is too large. Please choose a smaller image.");
+  }
+
+  return trimmed;
+}
 
 export async function GET() {
   try {
@@ -32,6 +60,39 @@ export async function GET() {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
+    const userObjectId = new mongoose.Types.ObjectId(session.user.id);
+    const completedSettlementsAgg = await Settlement.aggregate([
+      { $match: { fromUser: userObjectId, status: "completed" } },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          totalAmount: { $sum: "$amount" },
+        },
+      },
+    ]);
+
+    const reputationSummary = buildReputationSummary({
+      completedSettlements: completedSettlementsAgg[0]?.count ?? 0,
+      pendingSettlements: pendingSettlements.length,
+      completedAmount: completedSettlementsAgg[0]?.totalAmount ?? 0,
+      pendingAmount: pendingSettlements.reduce(
+        (total, settlement) => total + settlement.amount,
+        0
+      ),
+    });
+
+    const normalizedUser =
+      user.reputationScore === reputationSummary.score
+        ? user
+        : await User.findByIdAndUpdate(
+            session.user.id,
+            { reputationScore: reputationSummary.score },
+            { new: true }
+          )
+            .select("name email image upiId reputationScore createdAt")
+            .lean();
+
     const pendingSummary = {
       count: pendingSettlements.length,
       totalAmount: pendingSettlements.reduce(
@@ -50,7 +111,7 @@ export async function GET() {
       })),
     };
 
-    return NextResponse.json({ user, pendingSummary }, { status: 200 });
+    return NextResponse.json({ user: normalizedUser, pendingSummary }, { status: 200 });
   } catch {
     return NextResponse.json(
       { message: "Failed to fetch profile" },
@@ -72,7 +133,7 @@ export async function PATCH(request: NextRequest) {
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
     const upiId =
       typeof body?.upiId === "string" ? body.upiId.trim().toLowerCase() : "";
-    const image = typeof body?.image === "string" ? body.image.trim() : "";
+    const image = sanitizeProfileImage(body?.image);
 
     if (!name) {
       return NextResponse.json({ message: "Name is required" }, { status: 400 });
@@ -109,7 +170,7 @@ export async function PATCH(request: NextRequest) {
         name,
         email,
         upiId: upiId || undefined,
-        image: image || undefined,
+        image,
       },
       {
         new: true,

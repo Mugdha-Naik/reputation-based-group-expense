@@ -94,7 +94,8 @@ export async function PATCH(req: NextRequest) {
     await rebuildPendingSettlementsForGroup(settlement.groupId.toString());
 
     const debtorUserId = settlement.fromUser.toString();
-    const [completedSettlements, pendingSettlements] = await Promise.all([
+    const [completedSettlements, pendingSettlements, completedAmountAgg, pendingAmountAgg] =
+      await Promise.all([
       Settlement.countDocuments({
         fromUser: debtorUserId,
         status: "completed",
@@ -103,11 +104,24 @@ export async function PATCH(req: NextRequest) {
         fromUser: debtorUserId,
         status: "pending",
       }),
+      Settlement.aggregate([
+        { $match: { fromUser: new mongoose.Types.ObjectId(debtorUserId), status: "completed" } },
+        { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
+      ]),
+      Settlement.aggregate([
+        { $match: { fromUser: new mongoose.Types.ObjectId(debtorUserId), status: "pending" } },
+        { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
+      ]),
     ]);
+
+    const completedAmount = completedAmountAgg[0]?.totalAmount ?? 0;
+    const pendingAmount = pendingAmountAgg[0]?.totalAmount ?? 0;
 
     const reputationSummary = buildReputationSummary({
       completedSettlements,
       pendingSettlements,
+      completedAmount,
+      pendingAmount,
     });
 
     await User.findByIdAndUpdate(debtorUserId, {

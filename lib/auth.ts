@@ -16,6 +16,25 @@ interface Credentials {
   password: string;
 }
 
+function normalizeSessionImage(image: unknown): string | undefined {
+  if (typeof image !== "string") {
+    return undefined;
+  }
+
+  const trimmed = image.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  // Keep cookie-backed session payloads small. Data URLs from local file uploads
+  // can easily exceed browser header limits and trigger HTTP 431 responses.
+  if (trimmed.startsWith("data:") || trimmed.length > 2048) {
+    return undefined;
+  }
+
+  return trimmed;
+}
+
 const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim() || "";
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim() || "";
 
@@ -69,7 +88,7 @@ export const authOptions: NextAuthOptions = {
           id: user._id,
           name: user.name,
           email: user.email,
-          image: user.image,
+          image: normalizeSessionImage(user.image),
           reputationScore: user.reputationScore,
           upiId: user.upiId,
         };
@@ -107,7 +126,7 @@ export const authOptions: NextAuthOptions = {
         user.id = existingUser._id.toString();
         user.name = existingUser.name;
         user.email = existingUser.email;
-        user.image = existingUser.image || user.image;
+        user.image = normalizeSessionImage(existingUser.image) || normalizeSessionImage(user.image);
         user.reputationScore = existingUser.reputationScore ?? 100;
         user.upiId = existingUser.upiId;
         return true;
@@ -122,7 +141,7 @@ export const authOptions: NextAuthOptions = {
       user.id = createdUser._id.toString();
       user.name = createdUser.name;
       user.email = createdUser.email;
-      user.image = createdUser.image;
+      user.image = normalizeSessionImage(createdUser.image);
       user.reputationScore = createdUser.reputationScore ?? 100;
       user.upiId = createdUser.upiId;
       return true;
@@ -133,7 +152,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
-        token.image = user.image;
+        token.image = normalizeSessionImage(user.image);
         token.reputationScore = user.reputationScore;
         token.upiId = user.upiId;
       }
@@ -141,7 +160,7 @@ export const authOptions: NextAuthOptions = {
       if (trigger === "update" && session?.user) {
         token.name = session.user.name ?? token.name;
         token.email = session.user.email ?? token.email;
-        token.image = session.user.image ?? token.image;
+        token.image = normalizeSessionImage(session.user.image) ?? token.image;
         token.upiId = session.user.upiId ?? token.upiId;
       }
       return token;
@@ -157,7 +176,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string;
         session.user.email = token.email;
         session.user.name = token.name;
-        session.user.image = token.image as string;
+        session.user.image = normalizeSessionImage(token.image);
         session.user.reputationScore = token.reputationScore as number;
         session.user.upiId = token.upiId as string | undefined;
       }

@@ -29,5 +29,8 @@ const groupSchema = new mongoose.Schema<IGroup>(
     {timestamps: true}
 )
 
+// Add index for members array
+groupSchema.index({ members: 1 });
+
 const Group = mongoose.models.Group || mongoose.model<IGroup>("Group", groupSchema)
 export default Group;
