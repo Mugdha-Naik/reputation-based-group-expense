@@ -12,6 +12,9 @@ export default function CreateGroupPage() {
   const [error, setError] = useState("")
   const router = useRouter()
 
+  // Add dark background to body for this page
+  // (for Next.js app dir, safest is to set on the outer div)
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.replace("/login")
@@ -50,12 +53,17 @@ export default function CreateGroupPage() {
   }
 
   if (status === "loading") {
-    return <CenteredCard cardClassName="rounded-lg text-center">Loading...</CenteredCard>
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <CenteredCard cardClassName="rounded-lg text-center">Loading...</CenteredCard>
+      </div>
+    );
   }
 
   return (
-    <CenteredCard cardClassName="rounded-lg">
-        <h1 className="mb-4 text-xl font-bold">Create Group</h1>
+    <div className="min-h-screen flex items-center justify-center bg-black">
+      <CenteredCard cardClassName="rounded-lg">
+        <h1 className="mb-4 text-xl font-bold text-white">Create Group</h1>
 
         {error && (
           <p className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
@@ -64,7 +72,7 @@ export default function CreateGroupPage() {
         )}
 
         <input
-          className="mb-4 w-full rounded-md border border-gray-600 bg-transparent p-2.5 outline-none focus:border-white"
+          className="mb-4 w-full rounded-md border border-gray-700 bg-gray-900 text-white placeholder:text-gray-400 p-2.5 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-600/30"
           placeholder="Group name"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -73,10 +81,11 @@ export default function CreateGroupPage() {
         <button
           onClick={handleCreate}
           disabled={loading}
-          className="w-full rounded-md bg-white p-2.5 font-medium text-black hover:bg-gray-200 disabled:opacity-60"
+          className="w-full rounded-md bg-gradient-to-r from-blue-600 to-purple-600 p-2.5 font-medium text-white hover:from-blue-700 hover:to-purple-700 transition disabled:opacity-60"
         >
           {loading ? "Creating..." : "Create"}
         </button>
-    </CenteredCard>
-  )
+      </CenteredCard>
+    </div>
+  );
 }
