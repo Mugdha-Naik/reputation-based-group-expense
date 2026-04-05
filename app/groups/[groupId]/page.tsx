@@ -229,7 +229,7 @@ export default function GroupDetailsPage() {
 
   if (loading || status === "loading") {
     return (
-      <PageContainer className="flex items-center justify-center bg-[#07111f]">
+      <PageContainer className="flex items-center justify-center bg-black">
         <p className="text-sm text-slate-300">Loading group details...</p>
       </PageContainer>
     );
