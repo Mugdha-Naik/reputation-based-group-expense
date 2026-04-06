@@ -95,6 +95,8 @@ export default function Dashboard() {
   const [error, setError] = useState("");
   const [qrGroup, setQrGroup] = useState<Group | null>(null);
 
+  
+
   // Fetch groups (summary only) as soon as authenticated
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -153,22 +155,16 @@ export default function Dashboard() {
   }, [groups, reputationScore]);
 
   // Detect light/dark mode (if you have a theme context, otherwise fallback to localStorage or default)
-  const [isDayMode, setIsDayMode] = useThemeState(true);
+  const [isDayMode, setIsDayMode] = useThemeState(false);
   useThemeEffect(() => {
     const storedTheme = typeof window !== "undefined" ? window.localStorage.getItem("home-theme") : null;
     setIsDayMode(storedTheme === "day" || !storedTheme);
   }, []);
 
   return (
-    <PageContainer
-      className={isDayMode
-        ? "bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.07),_transparent_24%),radial-gradient(circle_at_right,_rgba(37,99,235,0.04),_transparent_22%),linear-gradient(180deg,#F3F4EF_0%,#E9ECE6_48%,#F5F7F2_100%)] text-[var(--color-text)]"
-        : "bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),_transparent_24%),radial-gradient(circle_at_right,_rgba(139,92,246,0.12),_transparent_22%),linear-gradient(180deg,#07111f_0%,#0f172a_48%,#111827_100%)] text-white"}
-    >
+    <PageContainer className="bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),_transparent_24%),radial-gradient(circle_at_right,_rgba(139,92,246,0.12),_transparent_22%),linear-gradient(180deg,#07111f_0%,#0f172a_48%,#111827_100%)] text-white">
       <div className="mx-auto max-w-[920px]">
-        <section className={isDayMode
-          ? "relative overflow-hidden rounded-[36px] border border-[#E0E3DB] bg-[#F8F9F6] px-6 py-6 shadow-[0_8px_32px_rgba(37,99,235,0.06)] sm:px-8 sm:py-8"
-          : "relative overflow-hidden rounded-[36px] border border-white/10 bg-white/6 px-6 py-6 shadow-[0_24px_90px_rgba(2,6,23,0.36)] backdrop-blur-xl sm:px-8 sm:py-8"}>
+        <section className="relative overflow-hidden rounded-[36px] border border-white/10 bg-white/6 px-6 py-6 shadow-[0_24px_90px_rgba(2,6,23,0.36)] backdrop-blur-xl sm:px-8 sm:py-8">
           <div className={isDayMode
             ? "absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(37,99,235,0.10),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(37,99,235,0.08),_transparent_22%)]"
             : "absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.18),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(139,92,246,0.15),_transparent_22%)]"} />
@@ -183,9 +179,7 @@ export default function Dashboard() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <div className={isDayMode
-                ? "rounded-[28px] border border-[#E0E3DB] bg-[#F3F4EF] px-4 py-3 shadow-[0_4px_16px_rgba(37,99,235,0.04)] min-w-[140px] min-h-[64px] flex items-center"
-                : "rounded-[28px] border border-white/12 bg-slate-950/35 px-4 py-3 shadow-[0_12px_36px_rgba(15,23,42,0.28)] min-w-[140px] min-h-[64px] flex items-center"}>
+              <div className="rounded-[28px] border border-white/12 bg-slate-950/35 px-4 py-3 shadow-[0_12px_36px_rgba(15,23,42,0.28)]">
                 {reputationLoading ? (
                   <div className="flex items-center gap-3 animate-pulse">
                     <div className={isDayMode ? "h-16 w-16 rounded-full bg-[var(--color-bg)]" : "h-16 w-16 rounded-full bg-slate-800"} />
@@ -212,9 +206,7 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={() => router.push("/users")}
-                className={isDayMode
-                  ? "rounded-full border border-[#E0E3DB] bg-[#F8F9F6] px-4 py-3 text-sm font-medium text-[var(--color-accent-blue)] transition hover:border-[var(--color-accent-blue)] hover:text-[var(--color-accent-blue-dark)]"
-                  : "rounded-full border border-white/12 bg-white/8 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/12"}
+                className="rounded-full border border-white/12 bg-white/8 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/12"
               >
                 Users
               </button>
@@ -222,9 +214,9 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={() => router.push("/groups/create")}
-                className={isDayMode
-                  ? "rounded-full bg-[var(--color-accent-blue)] px-5 py-3 text-sm font-medium text-white shadow-[0_2px_8px_rgba(37,99,235,0.10)] transition duration-300 hover:-translate-y-0.5 hover:bg-[var(--color-accent-blue-dark)]"
-                  : "rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-violet-500 px-5 py-3 text-sm font-medium text-white shadow-[0_14px_34px_rgba(59,130,246,0.28)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_44px_rgba(99,102,241,0.34)]"}
+                className={
+                   
+                  "rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-violet-500 px-5 py-3 text-sm font-medium text-white shadow-[0_14px_34px_rgba(59,130,246,0.28)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_44px_rgba(99,102,241,0.34)]"}
               >
                 + Create Group
               </button>
@@ -232,9 +224,9 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={() => router.push("/profile")}
-                className={isDayMode
-                  ? "flex h-11 w-11 items-center justify-center rounded-full border border-[#E0E3DB] bg-[#F8F9F6] text-sm font-semibold text-[var(--color-accent-blue)] transition hover:border-[var(--color-accent-blue)] hover:text-[var(--color-accent-blue-dark)]"
-                  : "flex h-11 w-11 items-center justify-center rounded-full border border-white/14 bg-white/8 text-sm font-semibold text-white transition hover:bg-white/12"}
+                className={
+
+          "flex h-11 w-11 items-center justify-center rounded-full border border-white/14 bg-white/8 text-sm font-semibold text-white transition hover:bg-white/12"}
               >
                 {(session?.user?.name || "N").charAt(0).toUpperCase()}
               </button>
@@ -250,47 +242,62 @@ export default function Dashboard() {
 
         {!groupsLoading && (
           <section className="mt-8 grid gap-4 md:grid-cols-3">
-            <div className={isDayMode
-              ? "group rounded-full border border-transparent bg-gradient-to-r from-[var(--color-accent-blue)] via-blue-400 to-violet-400 px-5 py-4 shadow-[0_8px_32px_rgba(37,99,235,0.08)] transition duration-300 hover:scale-[1.02]"
-              : "group rounded-full border border-white/10 bg-white/7 px-5 py-4 shadow-[0_12px_40px_rgba(2,6,23,0.22)] backdrop-blur-xl transition duration-300 hover:scale-[1.02] hover:border-blue-400/25 hover:shadow-[0_16px_50px_rgba(59,130,246,0.16)]"}>
-              <div className="flex items-center gap-4">
-                <div className={isDayMode ? "flex h-11 w-11 items-center justify-center rounded-full bg-white/30 text-lg" : "flex h-11 w-11 items-center justify-center rounded-full bg-blue-500/16 text-lg"}>
-                  G
-                </div>
-                <div>
-                  <p className={isDayMode ? "text-xs uppercase tracking-[0.18em] text-white/80" : "text-xs uppercase tracking-[0.18em] text-slate-400"}>Total Groups</p>
-                  <p className={isDayMode ? "mt-1 text-2xl font-semibold text-white" : "mt-1 text-2xl font-semibold text-white"}>{stats.totalGroups}</p>
-                </div>
-              </div>
-            </div>
+            <div className="group rounded-full border border-white/10 bg-white/7 px-5 py-4 shadow-[0_12px_40px_rgba(2,6,23,0.22)] backdrop-blur-xl transition duration-300 hover:scale-[1.02] hover:border-blue-400/25 hover:shadow-[0_16px_50px_rgba(59,130,246,0.16)]">
+  <div className="flex items-center gap-4">
 
-            <div className={isDayMode
-              ? "group rounded-full border border-transparent bg-gradient-to-r from-[var(--color-accent-blue)] via-blue-400 to-violet-400 px-5 py-4 shadow-[0_8px_32px_rgba(37,99,235,0.08)] transition duration-300 hover:scale-[1.02]"
-              : "group rounded-full border border-white/10 bg-white/7 px-5 py-4 shadow-[0_12px_40px_rgba(2,6,23,0.22)] backdrop-blur-xl transition duration-300 hover:scale-[1.02] hover:border-violet-400/25 hover:shadow-[0_16px_50px_rgba(139,92,246,0.16)]"}>
-              <div className="flex items-center gap-4">
-                <div className={isDayMode ? "flex h-11 w-11 items-center justify-center rounded-full bg-white/30 text-lg" : "flex h-11 w-11 items-center justify-center rounded-full bg-violet-500/16 text-lg"}>
-                  R
-                </div>
-                <div>
-                  <p className={isDayMode ? "text-xs uppercase tracking-[0.18em] text-white/80" : "text-xs uppercase tracking-[0.18em] text-slate-400"}>Total Expenses</p>
-                  <p className={isDayMode ? "mt-1 text-2xl font-semibold text-white" : "mt-1 text-2xl font-semibold text-white"}>{currency.format(stats.totalExpenses)}</p>
-                </div>
-              </div>
-            </div>
+    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-500/16 text-lg">
+      G
+    </div>
 
-            <div className={isDayMode
-              ? "group rounded-full border border-transparent bg-gradient-to-r from-[var(--color-accent-blue)] via-blue-400 to-violet-400 px-5 py-4 shadow-[0_8px_32px_rgba(37,99,235,0.08)] transition duration-300 hover:scale-[1.02]"
-              : "group rounded-full border border-white/10 bg-white/7 px-5 py-4 shadow-[0_12px_40px_rgba(2,6,23,0.22)] backdrop-blur-xl transition duration-300 hover:scale-[1.02] hover:border-sky-400/25 hover:shadow-[0_16px_50px_rgba(96,165,250,0.16)]"}>
-              <div className="flex items-center gap-4">
-                <div className={isDayMode ? "flex h-11 w-11 items-center justify-center rounded-full bg-white/30 text-lg" : "flex h-11 w-11 items-center justify-center rounded-full bg-sky-500/16 text-lg"}>
-                  S
-                </div>
-                <div>
-                  <p className={isDayMode ? "text-xs uppercase tracking-[0.18em] text-white/80" : "text-xs uppercase tracking-[0.18em] text-slate-400"}>Reputation Score</p>
-                  <p className={isDayMode ? "mt-1 text-2xl font-semibold text-white" : "mt-1 text-2xl font-semibold text-white"}>{stats.reputationScore}/100</p>
-                </div>
-              </div>
-            </div>
+    <div>
+      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
+        Total Groups
+      </p>
+      <p className="mt-1 text-2xl font-semibold text-white">
+        {stats.totalGroups}
+      </p>
+    </div>
+
+  </div>
+</div>
+
+            <div className="group rounded-full border border-white/10 bg-white/7 px-5 py-4 shadow-[0_12px_40px_rgba(2,6,23,0.22)] backdrop-blur-xl transition duration-300 hover:scale-[1.02] hover:border-violet-400/25 hover:shadow-[0_16px_50px_rgba(139,92,246,0.16)]">
+  <div className="flex items-center gap-4">
+    
+    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-violet-500/16 text-lg">
+      R
+    </div>
+
+    <div>
+      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
+        Total Expenses
+      </p>
+      <p className="mt-1 text-2xl font-semibold text-white">
+        {currency.format(stats.totalExpenses)}
+      </p>
+    </div>
+
+  </div>
+</div>
+
+            <div className="group rounded-full border border-white/10 bg-white/7 px-5 py-4 shadow-[0_12px_40px_rgba(2,6,23,0.22)] backdrop-blur-xl transition duration-300 hover:scale-[1.02] hover:border-sky-400/25 hover:shadow-[0_16px_50px_rgba(96,165,250,0.16)]">
+  <div className="flex items-center gap-4">
+
+    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-sky-500/16 text-lg">
+      S
+    </div>
+
+    <div>
+      <p className="text-xs uppercase tracking-[0.18em] text-slate-400">
+        Reputation Score
+      </p>
+      <p className="mt-1 text-2xl font-semibold text-white">
+        {stats.reputationScore}/100
+      </p>
+    </div>
+
+  </div>
+</div>
           </section>
         )}
 
