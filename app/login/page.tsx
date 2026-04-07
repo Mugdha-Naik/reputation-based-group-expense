@@ -83,7 +83,7 @@ export default function Login() {
   };
 
   return (
-    <CenteredCard cardClassName="border-white p-6 sm:p-8">
+    <CenteredCard cardClassName="text-white border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] p-6 sm:p-8 rounded-2xl">
         <h1 className="mb-6 text-center text-2xl font-semibold">Login</h1>
 
         {error && (

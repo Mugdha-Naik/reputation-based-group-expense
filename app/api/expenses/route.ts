@@ -132,17 +132,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const expense = await Expense.create({
-      groupId,
-      title: resolvedTitle,
-      category: resolvedCategory,
-      amount: resolvedAmount,
-      paidBy: resolvedPaidBy,
-      splitAmong: resolvedParticipants,
-      participants: resolvedParticipants,
-      paymentMethod,
-      billImage,
-    });
+    const expenseData: any = {
+  groupId,
+  title: resolvedTitle,
+  category: resolvedCategory,
+  amount: resolvedAmount,
+  paidBy: resolvedPaidBy,
+  splitAmong: resolvedParticipants,
+  participants: resolvedParticipants,
+  paymentMethod,
+  billImage, // keep old field
+};
+
+// 🔥 NEW: add payment proof if exists
+if (billImage) {
+  expenseData.paymentProof = {
+    url: billImage,
+    uploadedBy: resolvedPaidBy,
+    uploadedAt: new Date(),
+    status: "approved",
+  };
+}
+
+const expense = await Expense.create(expenseData);
+
+// 🔥 NEW: increase reputation (+3)
+if (billImage) {
+  await User.findByIdAndUpdate(resolvedPaidBy, {
+    $inc: { reputationScore: 3 },
+  });
+}
 
     const payer = await User.findById(resolvedPaidBy).select("name").lean();
     const payerName = payer?.name || "A member";
