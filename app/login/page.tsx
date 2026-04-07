@@ -83,31 +83,40 @@ export default function Login() {
   };
 
   return (
-    <CenteredCard cardClassName="text-white border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] p-6 sm:p-8 rounded-2xl">
-        <h1 className="mb-6 text-center text-2xl font-semibold">Login</h1>
+    <CenteredCard
+      outerClassName="bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_24%),radial-gradient(circle_at_right,_rgba(139,92,246,0.14),_transparent_22%),linear-gradient(180deg,#07111f_0%,#0f172a_48%,#111827_100%)]"
+      cardClassName="rounded-[30px] border border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.94),rgba(17,24,39,0.9))] p-7 text-white shadow-[0_24px_90px_rgba(2,6,23,0.5)] backdrop-blur-xl sm:p-9"
+    >
+        <div className="mb-8 text-center">
+          <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Welcome Back</p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Login</h1>
+          <p className="mt-2 text-sm text-slate-400">
+            Access your groups, settlements, and reputation activity.
+          </p>
+        </div>
 
         {error && (
-          <div className="mb-4 rounded-lg border border-red-500 bg-red-500/20 p-3 text-sm text-red-400">
+          <div className="mb-5 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {error}
           </div>
         )}
 
         <form className="space-y-5 sm:space-y-6" onSubmit={handleLogin}>
           <div>
-            <label className="mb-1 block">Email</label>
+            <label className="mb-2 block text-sm font-medium text-slate-200">Email</label>
             <input
               type="email"
-              className="w-full border-b border-white bg-gray-900 py-2 outline-none"
+              className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-400/40 focus:bg-slate-950"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
           <div>
-            <label className="mb-1 block">Password</label>
+            <label className="mb-2 block text-sm font-medium text-slate-200">Password</label>
             <input
               type="password"
-              className="w-full border-b border-white bg-gray-900 py-2 outline-none"
+              className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-400/40 focus:bg-slate-950"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -116,29 +125,29 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-white py-2 font-semibold text-black hover:bg-gray-200 disabled:opacity-50"
+            className="w-full rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-violet-500 px-5 py-3 font-semibold text-white shadow-[0_14px_34px_rgba(59,130,246,0.28)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_44px_rgba(99,102,241,0.34)] disabled:opacity-50"
           >
             {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
         <p
-          className="mt-4 cursor-pointer text-center text-sm text-blue-400"
+          className="mt-5 cursor-pointer text-center text-sm text-cyan-300 transition hover:text-cyan-200"
           onClick={() => router.push("/register")}
         >
           Don&apos;t have an account? Register
         </p>
 
-        <div className="my-6 flex items-center gap-2">
-          <hr className="flex-grow border-gray-600" />
-          <span className="text-sm">OR</span>
-          <hr className="flex-grow border-gray-600" />
+        <div className="my-7 flex items-center gap-3">
+          <hr className="flex-grow border-white/12" />
+          <span className="text-xs uppercase tracking-[0.24em] text-slate-500">Or</span>
+          <hr className="flex-grow border-white/12" />
         </div>
 
         <button
           type="button"
           disabled={googleLoading}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-white py-2 text-black hover:bg-gray-200"
+          className="flex w-full items-center justify-center gap-3 rounded-full border border-white/12 bg-white/8 px-5 py-3 text-white transition hover:bg-white/12 disabled:opacity-60"
           onClick={handleGoogleLogin}
         >
           <FcGoogle />
@@ -146,7 +155,7 @@ export default function Login() {
         </button>
 
         {!googleLoading && googleMessage && (
-          <p className="mt-3 text-center text-xs text-gray-400">{googleMessage}</p>
+          <p className="mt-3 text-center text-xs text-slate-400">{googleMessage}</p>
         )}
     </CenteredCard>
   );

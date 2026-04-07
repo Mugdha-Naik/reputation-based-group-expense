@@ -17,7 +17,7 @@ export async function GET() {
     await connectDB();
 
     const users = await User.find({})
-      .select("name email image upiId reputationScore createdAt")
+      .select("name email image upiId reputationScore createdAt receiptReputationDelta")
       .lean();
 
     const settlementMetrics = await Settlement.aggregate([
@@ -75,7 +75,10 @@ export async function GET() {
           completedAmount: 0,
           pendingAmount: 0,
         };
-        const summary = buildReputationSummary(metrics);
+        const summary = buildReputationSummary({
+          ...metrics,
+          receiptReputationDelta: user.receiptReputationDelta ?? 0,
+        });
 
         return {
           ...user,
@@ -109,7 +112,11 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        users: scoredUsers.map(({ storedReputationScore, ...user }) => user),
+        users: scoredUsers.map((user) => {
+          const nextUser = { ...user };
+          delete nextUser.storedReputationScore;
+          return nextUser;
+        }),
       },
       { status: 200 }
     );

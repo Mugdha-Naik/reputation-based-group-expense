@@ -10,6 +10,15 @@ interface IExpense {
   participants?: string[];
   paymentMethod?: "UPI" | "Cash";
   billImage?: string;
+  paymentProof?: {
+    url: string;
+    uploadedBy: string;
+    uploadedAt: Date;
+    validationStatus: "approved" | "rejected";
+    validationReason?: string;
+    validatedAt?: Date;
+    detectedAmount?: number;
+  };
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -61,6 +70,30 @@ const expenseSchema = new mongoose.Schema<IExpense>(
     },
     billImage: {
       type: String,
+    },
+    paymentProof: {
+      url: {
+        type: String,
+      },
+      uploadedBy: {
+        type: String,
+      },
+      uploadedAt: {
+        type: Date,
+      },
+      validationStatus: {
+        type: String,
+        enum: ["approved", "rejected"],
+      },
+      validationReason: {
+        type: String,
+      },
+      validatedAt: {
+        type: Date,
+      },
+      detectedAmount: {
+        type: Number,
+      },
     },
   },
   { timestamps: true }

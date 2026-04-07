@@ -8,11 +8,29 @@ import Notification from "@/models/Notification";
 import { authOptions } from "@/lib/auth";
 import User from "@/models/user.model";
 import { rebuildPendingSettlementsForGroup } from "@/lib/rebuildSettlements";
+import { validateReceiptImage } from "@/lib/receiptValidation";
 
-// POST /api/expenses
-// Body:
-// { groupId, paidBy, participants, paymentMethod, billImage }
-// Legacy body still supported: { groupId, title, amount, paidBy, splitAmong }
+interface ExpenseCreateData {
+  groupId: string;
+  title: string;
+  category?: string;
+  amount: number;
+  paidBy: string;
+  splitAmong: string[];
+  participants: string[];
+  paymentMethod?: "UPI" | "Cash";
+  billImage?: string;
+  paymentProof?: {
+    url: string;
+    uploadedBy: string;
+    uploadedAt: Date;
+    validationStatus: "approved" | "rejected";
+    validationReason?: string;
+    validatedAt?: Date;
+    detectedAmount?: number;
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -33,21 +51,15 @@ export async function POST(request: NextRequest) {
       billImage,
     } = body ?? {};
 
-    const resolvedParticipants = Array.isArray(participants)
-      ? participants
-      : splitAmong;
+    const resolvedParticipants = Array.isArray(participants) ? participants : splitAmong;
     const resolvedPaidBy =
       typeof paidBy === "string" && paidBy.trim().length > 0
         ? paidBy.trim()
         : session.user.id;
     const resolvedAmount =
-      typeof amount === "number" && !Number.isNaN(amount) && amount > 0
-        ? amount
-        : 1;
+      typeof amount === "number" && !Number.isNaN(amount) && amount > 0 ? amount : 1;
     const resolvedTitle =
-      typeof title === "string" && title.trim().length > 0
-        ? title.trim()
-        : "Group Expense";
+      typeof title === "string" && title.trim().length > 0 ? title.trim() : "Group Expense";
     const resolvedCategory =
       typeof category === "string" && category.trim().length > 0
         ? category.trim()
@@ -55,19 +67,13 @@ export async function POST(request: NextRequest) {
 
     if (!groupId || !resolvedPaidBy || !resolvedParticipants) {
       return NextResponse.json(
-        {
-          message:
-            "groupId, paidBy, and participants (or splitAmong) are required",
-        },
+        { message: "groupId, paidBy, and participants (or splitAmong) are required" },
         { status: 400 }
       );
     }
 
     if (!mongoose.Types.ObjectId.isValid(groupId)) {
-      return NextResponse.json(
-        { message: "Invalid groupId" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "Invalid groupId" }, { status: 400 });
     }
 
     if (
@@ -102,6 +108,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (typeof billImage !== "string" || !billImage.trim()) {
+      return NextResponse.json(
+        { message: "Please upload a receipt image before saving the expense" },
+        { status: 400 }
+      );
+    }
+
     await connectDB();
 
     const group = await Group.findById(groupId).lean();
@@ -132,36 +145,56 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const expenseData: any = {
-  groupId,
-  title: resolvedTitle,
-  category: resolvedCategory,
-  amount: resolvedAmount,
-  paidBy: resolvedPaidBy,
-  splitAmong: resolvedParticipants,
-  participants: resolvedParticipants,
-  paymentMethod,
-  billImage, // keep old field
-};
+    const receiptValidation = await validateReceiptImage(billImage, resolvedAmount);
 
-// 🔥 NEW: add payment proof if exists
-if (billImage) {
-  expenseData.paymentProof = {
-    url: billImage,
-    uploadedBy: resolvedPaidBy,
-    uploadedAt: new Date(),
-    status: "approved",
-  };
-}
+    if (!receiptValidation.isReceipt || !receiptValidation.matchesClaimedAmount) {
+      await User.findByIdAndUpdate(resolvedPaidBy, {
+        $inc: {
+          receiptReputationDelta: -5,
+          rejectedReceiptCount: 1,
+        },
+      });
 
-const expense = await Expense.create(expenseData);
+      return NextResponse.json(
+        {
+          message: receiptValidation.matchesClaimedAmount
+            ? receiptValidation.reason
+            : `Receipt amount does not match the entered amount. ${receiptValidation.reason}`,
+          receiptValidation,
+        },
+        { status: 400 }
+      );
+    }
 
-// 🔥 NEW: increase reputation (+3)
-if (billImage) {
-  await User.findByIdAndUpdate(resolvedPaidBy, {
-    $inc: { reputationScore: 3 },
-  });
-}
+    const expenseData: ExpenseCreateData = {
+      groupId,
+      title: resolvedTitle,
+      category: resolvedCategory,
+      amount: resolvedAmount,
+      paidBy: resolvedPaidBy,
+      splitAmong: resolvedParticipants,
+      participants: resolvedParticipants,
+      paymentMethod,
+      billImage,
+      paymentProof: {
+        url: billImage,
+        uploadedBy: resolvedPaidBy,
+        uploadedAt: new Date(),
+        validationStatus: "approved",
+        validationReason: receiptValidation.reason,
+        validatedAt: new Date(),
+        detectedAmount: receiptValidation.detectedAmount ?? undefined,
+      },
+    };
+
+    const expense = await Expense.create(expenseData);
+
+    await User.findByIdAndUpdate(resolvedPaidBy, {
+      $inc: {
+        receiptReputationDelta: 3,
+        approvedReceiptCount: 1,
+      },
+    });
 
     const payer = await User.findById(resolvedPaidBy).select("name").lean();
     const payerName = payer?.name || "A member";
@@ -184,17 +217,24 @@ if (billImage) {
       );
     }
 
-    return NextResponse.json({ expense }, { status: 201 });
+    return NextResponse.json(
+      {
+        expense,
+        receiptValidation,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Create expense error:", error);
     return NextResponse.json(
-      { message: "Failed to create expense" },
+      {
+        message: error instanceof Error ? error.message : "Failed to create expense",
+      },
       { status: 500 }
     );
   }
 }
 
-// GET /api/expenses?groupId=<group-id>
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -233,9 +273,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const expenses = await Expense.find({ groupId })
-      .sort({ createdAt: -1 })
-      .lean();
+    const expenses = await Expense.find({ groupId }).sort({ createdAt: -1 }).lean();
 
     return NextResponse.json({ expenses }, { status: 200 });
   } catch (error) {

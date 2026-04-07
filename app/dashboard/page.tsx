@@ -17,6 +17,7 @@ interface LatestExpense {
   title: string;
   amount: number;
   paidBy: string;
+  paidByName?: string;
   createdAt?: string;
 }
 
@@ -62,7 +63,12 @@ const getRelativeTime = (date?: string) => {
 const getLastActivity = (group: Group) => {
   if (!group.latestExpense) return "No recent activity yet";
 
-  return `${group.latestExpense.paidBy || group.latestExpense.title} added ${currency.format(
+  const paidByName =
+    group.latestExpense.paidByName ||
+    group.members?.find((member) => member._id === group.latestExpense?.paidBy)?.name ||
+    group.latestExpense.title;
+
+  return `${paidByName} added ${currency.format(
     group.latestExpense.amount
   )} - ${getRelativeTime(group.latestExpense.createdAt)}`;
 };
