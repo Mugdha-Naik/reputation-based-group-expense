@@ -6,6 +6,27 @@ import Expense from "@/models/Expense";
 import "@/models/user.model";
 import { NextResponse } from "next/server";
 
+interface AggregatedExpense {
+  groupId: string;
+  title: string;
+  amount: number;
+  paidBy: string;
+  createdAt?: string;
+}
+
+interface PopulatedGroupMember {
+  _id: string;
+  name?: string;
+  image?: string;
+}
+
+interface GroupSummary {
+  _id: string;
+  createdAt?: string;
+  members?: PopulatedGroupMember[];
+  [key: string]: unknown;
+}
+
 export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -24,13 +45,13 @@ export async function GET(req: Request) {
     const groupLimit = parseInt(url.searchParams.get("groupLimit") || "10", 10);
     const expenseLimit = parseInt(url.searchParams.get("expenseLimit") || "10", 10);
 
-    const groups = await Group.find({
+    const groups = (await Group.find({
       members: session.user.id,
     })
       .populate("members", "name image")
       .sort({ createdAt: -1 })
       .limit(groupLimit)
-      .lean();
+      .lean()) as GroupSummary[];
 
     const groupIds = groups.map((group) => group._id);
 
@@ -51,7 +72,7 @@ export async function GET(req: Request) {
       },
     ]);
 
-    const expensesByGroup: Record<string, any[]> = {};
+    const expensesByGroup: Record<string, AggregatedExpense[]> = {};
     for (const group of expenses) {
       expensesByGroup[String(group._id)] = group.expenses;
     }
@@ -59,16 +80,13 @@ export async function GET(req: Request) {
     const enrichedGroups = groups.map((group) => {
       const groupExpenses = expensesByGroup[String(group._id)] || [];
       const latestExpense = groupExpenses[0];
-      const memberNameById = new Map(
-        ((group.members || []) as Array<{ _id: unknown; name?: string }>).map((member) => [
-          String(member._id),
-          member.name || "Member",
-        ])
-      );
       const totalExpense = groupExpenses.reduce(
         (sum, expense) => sum + (typeof expense.amount === "number" ? expense.amount : 0),
         0
       );
+      const paidByName = latestExpense
+        ? group.members?.find((member) => String(member._id) === String(latestExpense.paidBy))?.name
+        : undefined;
 
       return {
         ...group,
@@ -78,10 +96,8 @@ export async function GET(req: Request) {
           ? {
               title: latestExpense.title,
               amount: latestExpense.amount,
-              paidBy:
-                memberNameById.get(String(latestExpense.paidBy)) ||
-                latestExpense.paidBy ||
-                "Member",
+              paidBy: latestExpense.paidBy,
+              paidByName,
               createdAt: latestExpense.createdAt,
             }
           : null,

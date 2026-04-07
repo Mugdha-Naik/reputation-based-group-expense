@@ -13,6 +13,7 @@ interface ReputationInput {
   pendingSettlements: number;
   completedAmount?: number;
   pendingAmount?: number;
+  receiptReputationDelta?: number;
   baseScore?: number;
   completedReward?: number;
   pendingPenalty?: number;
@@ -26,6 +27,7 @@ interface ReputationSummary {
   pendingSettlements: number;
   completedAmount: number;
   pendingAmount: number;
+  receiptReputationDelta: number;
 }
 
 export function getReputationTone(score: number): string {
@@ -60,6 +62,7 @@ export function calculateReputation({
   pendingSettlements,
   completedAmount = 0,
   pendingAmount = 0,
+  receiptReputationDelta = 0,
   baseScore = DEFAULT_BASE_SCORE,
   completedReward = DEFAULT_COMPLETED_REWARD,
   pendingPenalty = DEFAULT_PENDING_PENALTY,
@@ -84,7 +87,7 @@ export function calculateReputation({
     pendingSettlements * pendingPenalty + pendingAmount / pendingAmountDivisor
   );
   const rawScore =
-    baseScore + completedImpact - pendingImpact;
+    baseScore + completedImpact - pendingImpact + receiptReputationDelta;
 
   return clampReputation(Math.round(rawScore));
 }
@@ -96,6 +99,7 @@ export function buildReputationSummary(input: ReputationInput): ReputationSummar
     pendingSettlements: input.pendingSettlements,
     completedAmount: input.completedAmount ?? 0,
     pendingAmount: input.pendingAmount ?? 0,
+    receiptReputationDelta: input.receiptReputationDelta ?? 0,
   };
 }
 
