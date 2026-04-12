@@ -42,6 +42,21 @@ interface Settlement {
   status: SettlementStatus;
 }
 
+interface ExpenseReceipt {
+  url: string;
+}
+
+interface Expense {
+  _id: string;
+  title: string;
+  category?: string;
+  amount: number;
+  paidBy: string;
+  billImage?: string;
+  receipts?: ExpenseReceipt[];
+  createdAt?: string;
+}
+
 interface ReceiptExtraction {
   merchant: string;
   total: number;
@@ -49,6 +64,21 @@ interface ReceiptExtraction {
   category: string;
   items: string[];
 }
+
+interface ReceiptValidation {
+  isReceipt: boolean;
+  confidence: number;
+  matchedKeywords?: string[];
+  rationale?: string;
+}
+
+type ReceiptAiResponse = {
+  extracted?: ReceiptExtraction;
+  validation?: ReceiptValidation | null;
+  usedMockFallback?: boolean;
+  message?: string;
+  error?: string;
+};
 
 const getFallbackUpiId = (name: string) =>
   `${name.toLowerCase().replace(/\s+/g, "")}@upi`;
@@ -70,15 +100,17 @@ export default function TripPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
+  const openedFromGroupDetails = searchParams.get("openExpense") === "1";
 
   const [members, setMembers] = useState<Member[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
   const [splitType, setSplitType] = useState<SplitType>("Equal");
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("UPI");
-  const [billImage, setBillImage] = useState<string>("");
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [billImages, setBillImages] = useState<string[]>([]);
+  const [receiptFiles, setReceiptFiles] = useState<File[]>([]);
   const [extractedReceipt, setExtractedReceipt] = useState<ReceiptExtraction | null>(null);
   const [extractingReceipt, setExtractingReceipt] = useState(false);
   const [extractInfo, setExtractInfo] = useState("");
@@ -96,6 +128,12 @@ export default function TripPage() {
   const [cameraReady, setCameraReady] = useState(false);
   const [activeSettlement, setActiveSettlement] = useState<Settlement | null>(null);
   const [settlementMethod, setSettlementMethod] = useState<PaymentMethod>("UPI");
+  const [receiptPreview, setReceiptPreview] = useState<{
+    urls: string[];
+    index: number;
+  } | null>(null);
+  const [validatingReceipts, setValidatingReceipts] = useState(false);
+  const [popup, setPopup] = useState<{ message: string } | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -111,12 +149,31 @@ export default function TripPage() {
       reader.readAsDataURL(file);
     });
 
+  const validateReceiptFile = async (file: File) => {
+    const formData = new FormData();
+    formData.append("receipt", file);
+
+    const res = await fetch("/api/ai/receipt", { method: "POST", body: formData });
+    const data = (await res.json()) as ReceiptAiResponse;
+
+    if (!res.ok) {
+      throw new Error(data?.message || data?.error || "Failed to validate receipt");
+    }
+
+    return data;
+  };
+
+  const showPopup = useCallback((message: string) => {
+    setPopup({ message });
+  }, []);
+
   const fetchPageData = useCallback(async () => {
     try {
       setLoading(true);
-      const [membersRes, settlementsRes] = await Promise.all([
+      const [membersRes, settlementsRes, expensesRes] = await Promise.all([
         fetch(`/api/groups/${groupId}/members`, { credentials: "include" }),
         fetch(`/api/settlement/${groupId}`, { credentials: "include" }),
+        fetch(`/api/expenses?groupId=${groupId}`, { credentials: "include" }),
       ]);
 
       if (!membersRes.ok) {
@@ -125,13 +182,20 @@ export default function TripPage() {
       if (!settlementsRes.ok) {
         throw new Error("Failed to fetch settlements");
       }
+      if (!expensesRes.ok) {
+        throw new Error("Failed to fetch expenses");
+      }
 
-      const membersData = await membersRes.json();
-      const settlementsData = await settlementsRes.json();
+      const [membersData, settlementsData, expensesData] = await Promise.all([
+        membersRes.json(),
+        settlementsRes.json(),
+        expensesRes.json(),
+      ]);
 
       const nextMembers = Array.isArray(membersData.members) ? membersData.members : [];
       setMembers(nextMembers);
       setSettlements(Array.isArray(settlementsData) ? settlementsData : []);
+      setExpenses(Array.isArray(expensesData.expenses) ? expensesData.expenses : []);
       setSelectedParticipants(nextMembers.map((member: Member) => member._id));
     } catch (fetchError) {
       const message =
@@ -162,6 +226,16 @@ export default function TripPage() {
     }
   }, [searchParams]);
 
+  const exitExpenseFlow = useCallback(() => {
+    setExpenseModalOpen(false);
+    closeCamera();
+
+    const target = openedFromGroupDetails
+      ? `/groups/${encodeURIComponent(groupId)}`
+      : `/trip/${encodeURIComponent(groupId)}`;
+    router.replace(target);
+  }, [groupId, openedFromGroupDetails, router]);
+
   useEffect(() => {
     if (!expenseModalOpen) {
       return;
@@ -187,6 +261,21 @@ export default function TripPage() {
     () => settlements.filter((settlement) => settlement.status === "pending"),
     [settlements]
   );
+
+  const memberNameById = useMemo(
+    () => new Map(members.map((member) => [member._id, member.name])),
+    [members]
+  );
+
+  const sortedExpenses = useMemo(() => {
+    const copy = [...expenses];
+    copy.sort((left, right) => {
+      const leftTime = left.createdAt ? new Date(left.createdAt).getTime() : 0;
+      const rightTime = right.createdAt ? new Date(right.createdAt).getTime() : 0;
+      return rightTime - leftTime;
+    });
+    return copy;
+  }, [expenses]);
 
   const userOwes = useMemo(() => {
     const userId = session?.user?.id;
@@ -239,10 +328,10 @@ export default function TripPage() {
     0
   );
 
-  async function handleBillChange(file: File | undefined) {
-    if (!file) {
-      setBillImage("");
-      setReceiptFile(null);
+  async function handleBillChange(files: FileList | null | undefined) {
+    if (!files || files.length === 0) {
+      setBillImages([]);
+      setReceiptFiles([]);
       setExtractedReceipt(null);
       setExtractInfo("");
       return;
@@ -250,13 +339,69 @@ export default function TripPage() {
 
     try {
       setError("");
-      const dataUrl = await readFileAsDataUrl(file);
-      setBillImage(dataUrl);
-      setReceiptFile(file);
+      setValidatingReceipts(true);
+      setExtractInfo("Validating receipt images...");
+
+      const fileArray = Array.from(files);
+      const dataUrls = await Promise.all(fileArray.map((file) => readFileAsDataUrl(file)));
+
+      const acceptedFiles: File[] = [];
+      const acceptedUrls: string[] = [];
+      const rejectedNames: string[] = [];
+      let usedMockFallback = false;
+
+      for (let index = 0; index < fileArray.length; index += 1) {
+        const file = fileArray[index];
+        const url = dataUrls[index];
+
+        const result = await validateReceiptFile(file);
+        if (result.usedMockFallback) {
+          usedMockFallback = true;
+        }
+
+        const isReceipt = result.validation?.isReceipt ?? true;
+        if (!isReceipt) {
+          rejectedNames.push(file.name || `Image ${index + 1}`);
+          continue;
+        }
+
+        acceptedFiles.push(file);
+        acceptedUrls.push(url);
+      }
+
+      if (acceptedFiles.length === 0) {
+        setBillImages([]);
+        setReceiptFiles([]);
+        setExtractInfo("");
+        const message =
+          "No valid receipt images found. Please upload a real receipt (with total/amount details).";
+        setError(message);
+        showPopup(message);
+        return;
+      }
+
+      setBillImages(acceptedUrls);
+      setReceiptFiles(acceptedFiles);
+
+      if (rejectedNames.length > 0) {
+        const message = `Rejected ${rejectedNames.length} image(s). Choose a valid receipt image (with total/amount visible).`;
+        setError(message);
+        showPopup(message);
+      } else {
+        setError("");
+      }
+
+      setExtractInfo(
+        usedMockFallback
+          ? "Receipt previews loaded, but AI validation is temporarily unavailable. Please double-check the images are receipts."
+          : "Receipt images validated."
+      );
       setExtractedReceipt(null);
-      setExtractInfo("");
     } catch {
       setError("Failed to process bill image");
+    }
+    finally {
+      setValidatingReceipts(false);
     }
   }
 
@@ -308,15 +453,55 @@ export default function TripPage() {
 
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const imageDataUrl = canvas.toDataURL("image/jpeg", 0.9);
-    setBillImage(imageDataUrl);
-    setReceiptFile(null);
-    setExtractedReceipt(null);
-    setExtractInfo("Camera image saved. AI extraction currently works with uploaded files.");
-    closeCamera();
+
+    const dataUrlToFile = async (dataUrl: string, fileName: string) => {
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      return new File([blob], fileName, { type: blob.type || "image/jpeg" });
+    };
+
+    (async () => {
+      try {
+        setValidatingReceipts(true);
+        setExtractInfo("Validating camera receipt...");
+        const file = await dataUrlToFile(imageDataUrl, `camera-receipt-${Date.now()}.jpg`);
+        const result = await validateReceiptFile(file);
+        const isReceipt = result.validation?.isReceipt ?? true;
+
+        if (!isReceipt) {
+          setBillImages([]);
+          setReceiptFiles([]);
+          setExtractedReceipt(null);
+          setExtractInfo("");
+          const message =
+            "This photo doesn't look like a receipt. Please capture a receipt with total/amount visible.";
+          setError(message);
+          showPopup(message);
+          return;
+        }
+
+        setBillImages([imageDataUrl]);
+        setReceiptFiles([]);
+        setExtractedReceipt(null);
+        setExtractInfo(
+          result.usedMockFallback
+            ? "Camera image saved, but AI validation is temporarily unavailable. Please double-check it's a receipt."
+            : "Camera receipt validated."
+        );
+      } catch {
+        setBillImages([imageDataUrl]);
+        setReceiptFiles([]);
+        setExtractedReceipt(null);
+        setExtractInfo("Camera image saved. Unable to validate right now—please ensure it's a receipt.");
+      } finally {
+        setValidatingReceipts(false);
+        closeCamera();
+      }
+    })();
   }
 
   async function handleExtractDetails() {
-    if (!receiptFile) {
+    if (receiptFiles.length === 0) {
       setError("Please upload a receipt image first.");
       return;
     }
@@ -328,7 +513,7 @@ export default function TripPage() {
       setExtractInfo("");
 
       const formData = new FormData();
-      formData.append("receipt", receiptFile);
+      formData.append("receipt", receiptFiles[0]);
 
       const res = await fetch("/api/ai/receipt", {
         method: "POST",
@@ -385,81 +570,99 @@ export default function TripPage() {
   }
 
   async function handleSplitExpense() {
-    const paidBy = session?.user?.id;
-    const numericAmount = Number(amount);
+  const paidBy = session?.user?.id;
+  const numericAmount = Number(amount);
 
-    if (!paidBy) {
-      setError("You must be logged in");
-      return;
-    }
-
-    if (!groupId) {
-      setError("Invalid group");
-      return;
-    }
-
-    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-      setError("Enter a valid amount greater than 0");
-      return;
-    }
-
-    if (effectiveParticipants.length === 0) {
-      setError("Select at least one participant");
-      return;
-    }
-
-    if (!billImage) {
-      setError("Please attach a bill image");
-      return;
-    }
-
-    try {
-      setSubmittingExpense(true);
-      setError("");
-      setSuccess("");
-
-      const res = await fetch("/api/expenses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          groupId,
-          paidBy,
-          title,
-          category,
-          amount: numericAmount,
-          participants: effectiveParticipants,
-          paymentMethod,
-          billImage,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.message || "Failed to create expense");
-      }
-
-      setSelectedParticipants(members.map((member) => member._id));
-      setBillImage("");
-      setReceiptFile(null);
-      setExtractedReceipt(null);
-      setExtractInfo("");
-      setTitle("Group Expense");
-      setCategory("Other");
-      setAmount("");
-      setSplitType("Equal");
-      setSuccess("Expense split successfully");
-      setExpenseModalOpen(false);
-      closeCamera();
-      await fetchPageData();
-    } catch (splitError) {
-      const message =
-        splitError instanceof Error ? splitError.message : "Failed to create expense";
-      setError(message);
-    } finally {
-      setSubmittingExpense(false);
-    }
+  if (!paidBy) {
+    setError("You must be logged in");
+    return;
   }
+
+  if (!groupId) {
+    setError("Invalid group");
+    return;
+  }
+
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+    setError("Enter a valid amount greater than 0");
+    return;
+  }
+
+  if (effectiveParticipants.length === 0) {
+    setError("Select at least one participant");
+    return;
+  }
+
+  if (billImages.length === 0) {
+    setError("Please attach a bill image");
+    return;
+  }
+
+  if (validatingReceipts) {
+    setError("Please wait for receipt validation to finish.");
+    return;
+  }
+
+  try {
+    setSubmittingExpense(true);
+    setError("");
+    setSuccess("");
+
+    // 🔥 Use the in-memory data URLs (from file upload or camera capture).
+    const images = billImages;
+
+    const res = await fetch("/api/expenses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        groupId,
+        paidBy,
+        title,
+        category,
+        amount: numericAmount,
+        participants: effectiveParticipants,
+        paymentMethod,
+
+        billImage: images[0],
+        billImages: images,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.message || "Failed to create expense");
+    }
+
+    // reset states
+    setSelectedParticipants(members.map((member) => member._id));
+    setBillImages([]);
+    setReceiptFiles([]);
+    setExtractedReceipt(null);
+    setExtractInfo("");
+    setTitle("Group Expense");
+    setCategory("Other");
+    setAmount("");
+    setSplitType("Equal");
+
+    setSuccess("Expense split successfully");
+
+    if (openedFromGroupDetails) {
+      exitExpenseFlow();
+      return;
+    }
+
+    setExpenseModalOpen(false);
+    closeCamera();
+    await fetchPageData();
+  } catch (splitError) {
+    const message =
+      splitError instanceof Error ? splitError.message : "Failed to create expense";
+    setError(message);
+  } finally {
+    setSubmittingExpense(false);
+  }
+}
 
   function openPayModal(settlement: Settlement) {
     setSettlementMethod("UPI");
@@ -514,6 +717,39 @@ export default function TripPage() {
 
   return (
     <PageContainer className="bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.14),_transparent_28%),linear-gradient(145deg,#020617_0%,#0f172a_46%,#111827_100%)]">
+      {popup ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-md"
+          onClick={() => setPopup(null)}
+        >
+          <div
+            className="relative w-full max-w-md rounded-[28px] border border-rose-400/25 bg-slate-950/95 p-5 shadow-[0_28px_100px_rgba(2,6,23,0.65)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPopup(null)}
+              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg text-slate-200 transition hover:bg-white/10 hover:text-white"
+              aria-label="Close"
+            >
+              x
+            </button>
+            <p className="text-xs uppercase tracking-[0.18em] text-rose-200/80">
+              Invalid Image
+            </p>
+            <p className="mt-3 text-sm leading-6 text-rose-100">{popup.message}</p>
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setPopup(null)}
+                className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+              >
+                Okay
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div className="mx-auto w-full max-w-6xl space-y-6 pb-8">
         <div className="grid gap-4 lg:grid-cols-[1.4fr_0.9fr_0.9fr]">
           <Card className="p-6">
@@ -662,6 +898,94 @@ export default function TripPage() {
           </Card>
         </div>
 
+        <Card className="p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-white">Expenses & Receipts</h2>
+              <p className="mt-2 text-sm text-slate-300">
+                All expenses for this group, with receipt proofs.
+              </p>
+            </div>
+            <Badge variant="slate">{sortedExpenses.length} expenses</Badge>
+          </div>
+
+          {sortedExpenses.length === 0 ? (
+            <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/55 p-4 text-sm text-slate-300">
+              No expenses yet. Add one to start building proofs.
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {sortedExpenses.map((expense) => {
+                const payerName = memberNameById.get(expense.paidBy) || "A member";
+                const receiptUrls = Array.from(
+                  new Set([
+                    ...(Array.isArray(expense.receipts)
+                      ? expense.receipts.map((receipt) => receipt.url)
+                      : []),
+                    expense.billImage,
+                  ])
+                ).filter((url): url is string => typeof url === "string" && url.trim().length > 0);
+
+                return (
+                  <div
+                    key={expense._id}
+                    className="rounded-[24px] border border-white/8 bg-slate-950/55 p-4"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-lg font-semibold text-white">
+                          {payerName} paid for {expense.title}
+                        </p>
+                        <p className="mt-1 text-sm text-slate-400">
+                          {expense.category?.trim() || "Shared expense"}{" "}
+                          {expense.createdAt
+                            ? `• ${new Date(expense.createdAt).toLocaleDateString("en-IN", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}`
+                            : ""}
+                        </p>
+                      </div>
+                      <p className="text-xl font-semibold text-white">
+                        INR {formatAmount(expense.amount)}
+                      </p>
+                    </div>
+
+                    {receiptUrls.length > 0 ? (
+                      <div className="mt-4">
+                        <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                          Receipts
+                        </p>
+                        <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                          {receiptUrls.map((url, index) => (
+                            <button
+                              key={`${expense._id}-receipt-${index}`}
+                              type="button"
+                              onClick={() => setReceiptPreview({ urls: receiptUrls, index })}
+                              className="shrink-0 rounded-2xl border border-white/10 bg-black/20 p-1.5 transition hover:border-white/20"
+                              aria-label={`Open receipt ${index + 1}`}
+                            >
+                              <img
+                                src={url}
+                                alt={`Receipt ${index + 1}`}
+                                className="h-16 w-16 rounded-2xl object-cover"
+                                loading="lazy"
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-4 text-sm text-slate-400">No receipt uploaded.</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+
         {error && (
           <p className="rounded-2xl border border-red-500/35 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {error}
@@ -693,10 +1017,7 @@ export default function TripPage() {
                 </div>
                 <Button
                   variant="ghost"
-                  onClick={() => {
-                    setExpenseModalOpen(false);
-                    closeCamera();
-                  }}
+                  onClick={exitExpenseFlow}
                 >
                   Close
                 </Button>
@@ -771,7 +1092,8 @@ export default function TripPage() {
                                 closeCamera();
                               }
                               if (method === "Cash") {
-                                setReceiptFile(null);
+                                setBillImages([]);
+                                setReceiptFiles([]);
                                 setExtractedReceipt(null);
                                 setExtractInfo("");
                               }
@@ -850,31 +1172,40 @@ export default function TripPage() {
                       <span className="mt-1 block text-xs text-slate-400">
                         Upload a receipt image for preview and optional extraction.
                       </span>
-                      <input
+                        <input
                         type="file"
                         accept="image/*"
-                        onChange={(event) => handleBillChange(event.target.files?.[0])}
+                        multiple
+                        onChange={(event) => handleBillChange(event.target.files)}
                         className="mt-4 block w-full text-sm text-slate-300 file:mr-3 file:rounded-xl file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-white"
                       />
                     </label>
                   )}
 
-                  {billImage && (
+                  {billImages.length > 0 ? (
                     <div className="mt-4 rounded-[24px] border border-white/10 bg-slate-950/60 p-3">
-                      <img
-                        src={billImage}
-                        alt="Bill preview"
-                        className="max-h-56 w-full rounded-2xl object-contain"
-                      />
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                        Preview
+                      </p>
+                      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                        {billImages.map((url, index) => (
+                          <img
+                            key={`bill-preview-${index}`}
+                            src={url}
+                            alt={`Bill preview ${index + 1}`}
+                            className="h-24 w-24 rounded-2xl object-cover"
+                          />
+                        ))}
+                      </div>
                     </div>
-                  )}
+                  ) : null}
 
                   {paymentMethod !== "Cash" && (
                     <Button
                       variant="secondary"
                       className="mt-4 w-full py-3"
                       onClick={handleExtractDetails}
-                      disabled={!receiptFile || extractingReceipt}
+                      disabled={receiptFiles.length === 0 || extractingReceipt || validatingReceipts}
                     >
                       {extractingReceipt ? "Extracting..." : "Extract Details"}
                     </Button>
@@ -1097,6 +1428,100 @@ export default function TripPage() {
           </div>
         </div>
       )}
+
+      {receiptPreview ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md"
+          onClick={() => setReceiptPreview(null)}
+        >
+          <div
+            className="relative w-full max-w-3xl overflow-hidden rounded-[28px] border border-white/12 bg-slate-950/90 p-4 shadow-[0_28px_100px_rgba(2,6,23,0.55)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setReceiptPreview(null)}
+              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg text-slate-200 transition hover:bg-white/10 hover:text-white"
+              aria-label="Close receipt preview"
+            >
+              x
+            </button>
+            <div className="pt-10">
+              <img
+                src={receiptPreview.urls[receiptPreview.index]}
+                alt="Receipt preview"
+                className="max-h-[75vh] w-full rounded-2xl object-contain"
+              />
+              {receiptPreview.urls.length > 1 ? (
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:border-white/20 hover:bg-white/10"
+                    onClick={() =>
+                      setReceiptPreview((current) =>
+                        current
+                          ? {
+                              ...current,
+                              index:
+                                (current.index - 1 + current.urls.length) % current.urls.length,
+                            }
+                          : current
+                      )
+                    }
+                  >
+                    Prev
+                  </button>
+                  <p className="text-xs text-slate-300">
+                    {receiptPreview.index + 1} / {receiptPreview.urls.length}
+                  </p>
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:border-white/20 hover:bg-white/10"
+                    onClick={() =>
+                      setReceiptPreview((current) =>
+                        current
+                          ? { ...current, index: (current.index + 1) % current.urls.length }
+                          : current
+                      )
+                    }
+                  >
+                    Next
+                  </button>
+                </div>
+              ) : null}
+              {receiptPreview.urls.length > 1 ? (
+                <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                  {receiptPreview.urls.map((url, index) => {
+                    const active = index === receiptPreview.index;
+                    return (
+                      <button
+                        key={`trip-receipt-preview-thumb-${index}`}
+                        type="button"
+                        onClick={() =>
+                          setReceiptPreview((current) => (current ? { ...current, index } : current))
+                        }
+                        className={`shrink-0 rounded-2xl border p-1.5 transition ${
+                          active
+                            ? "border-cyan-400/40 bg-cyan-500/10"
+                            : "border-white/10 bg-white/5 hover:border-white/20"
+                        }`}
+                        aria-label={`Select receipt ${index + 1}`}
+                      >
+                        <img
+                          src={url}
+                          alt={`Receipt thumbnail ${index + 1}`}
+                          className="h-12 w-12 rounded-xl object-cover"
+                          loading="lazy"
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </PageContainer>
   );
 }

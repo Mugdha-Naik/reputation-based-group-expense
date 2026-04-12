@@ -11,6 +11,13 @@ type ReceiptExtraction = {
   items: string[];
 };
 
+type ReceiptValidation = {
+  isReceipt: boolean;
+  confidence: number;
+  matchedKeywords: string[];
+  rationale: string;
+};
+
 function sanitizeEnvValue(value?: string | null) {
   if (typeof value !== "string") return "";
   return value.trim();
@@ -76,6 +83,57 @@ function normalizeReceiptData(data: Partial<ReceiptExtraction>): ReceiptExtracti
   };
 }
 
+function normalizeReceiptValidation(
+  raw: unknown,
+  extracted: ReceiptExtraction
+): ReceiptValidation {
+  const record = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+
+  const matchedKeywords = Array.isArray(record.keywordsFound)
+    ? record.keywordsFound.map((value) => String(value)).filter(Boolean)
+    : Array.isArray(record.matchedKeywords)
+      ? record.matchedKeywords.map((value) => String(value)).filter(Boolean)
+      : [];
+
+  const isReceiptFromModel =
+    typeof record.isReceipt === "boolean" ? record.isReceipt : undefined;
+
+  const heuristicIsReceipt =
+    extracted.total > 0 ||
+    extracted.merchant.trim().length > 0 ||
+    extracted.items.length > 0 ||
+    matchedKeywords.length > 0;
+
+  const isReceipt = isReceiptFromModel ?? heuristicIsReceipt;
+
+  const confidenceRaw =
+    typeof record.confidence === "number"
+      ? record.confidence
+      : typeof record.receiptConfidence === "number"
+        ? record.receiptConfidence
+        : null;
+  const confidence =
+    confidenceRaw === null || Number.isNaN(confidenceRaw)
+      ? isReceipt
+        ? 0.7
+        : 0.3
+      : Math.max(0, Math.min(1, confidenceRaw));
+
+  const rationale =
+    typeof record.rationale === "string" && record.rationale.trim()
+      ? record.rationale.trim()
+      : isReceipt
+        ? "Detected common receipt signals."
+        : "Missing common receipt signals.";
+
+  return {
+    isReceipt,
+    confidence,
+    matchedKeywords,
+    rationale,
+  };
+}
+
 function extractJsonObject(text: string) {
   const cleaned = text.replace(/```json|```/gi, "").trim();
   const match = cleaned.match(/\{[\s\S]*\}/);
@@ -116,6 +174,21 @@ function isAuthError(error: unknown) {
   );
 }
 
+function isServiceUnavailableError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+
+  return (
+    message.includes("[503") ||
+    message.includes("503 service unavailable") ||
+    message.includes("service unavailable") ||
+    message.includes("high demand")
+  );
+}
+
 function getRetryDelaySeconds(error: unknown) {
   if (!(error instanceof Error)) {
     return null;
@@ -138,14 +211,30 @@ export async function POST(request: Request) {
   try {
     const apiKey =
       sanitizeEnvValue(process.env.GEMINI_API_KEY) ||
+      sanitizeEnvValue(process.env.GOOGLE_GENAI_API_KEY) ||
       sanitizeEnvValue(process.env.GOOGLE_API_KEY);
     const preferredModel = sanitizeEnvValue(process.env.GEMINI_MODEL) || "gemini-2.5-flash";
     const allowMockFallback = process.env.RECEIPT_AI_ALLOW_MOCK_FALLBACK !== "false";
     const modelCandidates = getModelCandidates(preferredModel);
 
     if (!apiKey) {
+      if (allowMockFallback) {
+        return NextResponse.json(
+          {
+            message:
+              "Gemini API key is missing. Returning mock receipt data for local testing.",
+            extracted: createMockReceiptData("receipt"),
+            usedMockFallback: true,
+          },
+          { status: 200 }
+        );
+      }
+
       return NextResponse.json(
-        { message: "GEMINI_API_KEY is missing in .env.local" },
+        {
+          message:
+            "Missing Gemini API key. Set GEMINI_API_KEY (or GOOGLE_GENAI_API_KEY) in your env.",
+        },
         { status: 500 }
       );
     }
@@ -181,6 +270,9 @@ Read this receipt image and extract:
 - category
 - items
 
+Also decide if the image is a real purchase/expense receipt.
+Look for common receipt keywords such as: total, grand total, subtotal, amount, sum, tax, gst, vat, invoice, bill, cash, change, paid, qty, rate.
+
 Return ONLY valid JSON.
 Use exactly this shape:
 
@@ -189,21 +281,29 @@ Use exactly this shape:
   "total": 0,
   "date": "",
   "category": "",
-  "items": []
+  "items": [],
+  "isReceipt": true,
+  "confidence": 0.0,
+  "keywordsFound": [],
+  "rationale": ""
 }
 
 Rules:
 - total must be a number
 - items must be an array of strings
 - if a field is unclear, keep it empty or 0
+- confidence must be a number from 0 to 1
+- keywordsFound must be an array of strings (only include keywords you are confident exist)
 - do not add markdown
 - do not wrap in backticks
 `;
 
     let extracted: ReceiptExtraction | null = null;
+    let validation: ReceiptValidation | null = null;
     let lastError: unknown = null;
     let quotaError: unknown = null;
     let authError: unknown = null;
+    let serviceUnavailableError: unknown = null;
 
     for (const modelName of modelCandidates) {
       try {
@@ -227,10 +327,19 @@ Rules:
         const text = result.response.text().trim();
         const parsed = extractJsonObject(text);
         extracted = normalizeReceiptData(parsed);
+        validation = normalizeReceiptValidation(parsed, extracted);
         break;
       } catch (modelError) {
         lastError = modelError;
-        console.error(`Receipt processing failed with model ${modelName}:`, modelError);
+        if (isServiceUnavailableError(modelError)) {
+          serviceUnavailableError = modelError;
+          console.warn(
+            `Receipt processing temporarily unavailable for model ${modelName}:`,
+            modelError
+          );
+        } else {
+          console.error(`Receipt processing failed with model ${modelName}:`, modelError);
+        }
 
         if (isQuotaError(modelError)) {
           quotaError = modelError;
@@ -258,10 +367,15 @@ Rules:
       const retryAfter = getRetryDelaySeconds(quotaError);
 
       if (allowMockFallback) {
+        const extractedMock = createMockReceiptData(receipt.name);
         return NextResponse.json(
           {
             message: "Gemini quota exceeded, returning mock receipt data for local testing.",
-            extracted: createMockReceiptData(receipt.name),
+            extracted: extractedMock,
+            validation: normalizeReceiptValidation(
+              { isReceipt: true, confidence: 0.2, rationale: "Using mock fallback." },
+              extractedMock
+            ),
             usedMockFallback: true,
             retryAfterSeconds: retryAfter,
           },
@@ -280,6 +394,30 @@ Rules:
     }
 
     if (!extracted) {
+      if (allowMockFallback) {
+        const extractedMock = createMockReceiptData(receipt.name);
+        return NextResponse.json(
+          {
+            message:
+              serviceUnavailableError
+                ? "Gemini is under high demand right now, returning mock receipt data for local testing."
+                : "Gemini failed to process this receipt, returning mock receipt data for local testing.",
+            extracted: extractedMock,
+            validation: normalizeReceiptValidation(
+              {
+                isReceipt: true,
+                confidence: 0.2,
+                rationale: "Using mock fallback.",
+              },
+              extractedMock
+            ),
+            usedMockFallback: true,
+            error: lastError instanceof Error ? lastError.message : "Unknown error",
+          },
+          { status: 200 }
+        );
+      }
+
       throw lastError instanceof Error
         ? lastError
         : new Error("No Gemini model returned a valid receipt response.");
@@ -289,6 +427,7 @@ Rules:
       {
         message: "Receipt processed successfully",
         extracted,
+        validation,
       },
       { status: 200 }
     );

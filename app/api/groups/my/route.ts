@@ -1,3 +1,5 @@
+"use client";
+
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/db";
@@ -6,13 +8,13 @@ import Expense from "@/models/Expense";
 import "@/models/user.model";
 import { NextResponse } from "next/server";
 
-interface AggregatedExpense {
+type AggregatedExpense = {
   groupId: string;
   title: string;
   amount: number;
   paidBy: string;
-  createdAt?: string;
-}
+  createdAt?: string | Date;
+};
 
 interface PopulatedGroupMember {
   _id: string;
@@ -73,19 +75,28 @@ export async function GET(req: Request) {
     ]);
 
     const expensesByGroup: Record<string, AggregatedExpense[]> = {};
-    for (const group of expenses) {
-      expensesByGroup[String(group._id)] = group.expenses;
+
+    for (const group of expenses as Array<{ _id: unknown; expenses: AggregatedExpense[] }>) {
+      expensesByGroup[String(group._id)] = Array.isArray(group.expenses)
+        ? group.expenses
+        : [];
     }
 
     const enrichedGroups = groups.map((group) => {
       const groupExpenses = expensesByGroup[String(group._id)] || [];
       const latestExpense = groupExpenses[0];
+
       const totalExpense = groupExpenses.reduce(
-        (sum, expense) => sum + (typeof expense.amount === "number" ? expense.amount : 0),
+        (sum, expense) =>
+          sum + (typeof expense.amount === "number" ? expense.amount : 0),
         0
       );
+
       const paidByName = latestExpense
-        ? group.members?.find((member) => String(member._id) === String(latestExpense.paidBy))?.name
+        ? group.members?.find(
+            (member) =>
+              String(member._id) === String(latestExpense.paidBy)
+          )?.name
         : undefined;
 
       return {
