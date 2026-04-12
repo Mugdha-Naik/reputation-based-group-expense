@@ -28,17 +28,11 @@ type AuthUser = NextAuthUser & {
 const MAX_SESSION_IMAGE_LENGTH = 2048;
 
 function normalizeSessionImage(image: unknown): string | undefined {
-  if (typeof image !== "string") {
-    return undefined;
-  }
+  if (typeof image !== "string") return undefined;
 
   const trimmed = image.trim();
-  if (!trimmed) {
-    return undefined;
-  }
+  if (!trimmed) return undefined;
 
-  // Keep cookie-backed session payloads small. Data URLs from uploads can
-  // easily exceed header limits and trigger HTTP 431 responses.
   if (trimmed.startsWith("data:") || trimmed.length > MAX_SESSION_IMAGE_LENGTH) {
     return undefined;
   }
@@ -69,9 +63,7 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials: Credentials | undefined) {
-        if (!credentials) {
-          throw new Error("No credentials provided");
-        }
+        if (!credentials) throw new Error("No credentials provided");
 
         const { email, password } = credentials;
         if (!email || !password) {
@@ -105,6 +97,7 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
+
   callbacks: {
     async signIn({
       user,
@@ -115,9 +108,7 @@ export const authOptions: NextAuthOptions = {
       account: Account | null;
       profile?: Profile;
     }) {
-      if (account?.provider !== "google") {
-        return true;
-      }
+      if (account?.provider !== "google") return true;
 
       if (!isGoogleAuthConfigured) {
         throw new Error("Google sign-in is not configured yet.");
@@ -125,9 +116,8 @@ export const authOptions: NextAuthOptions = {
 
       const googleEmail =
         typeof user.email === "string" ? user.email.trim().toLowerCase() : "";
-      if (!googleEmail.endsWith("@gmail.com")) {
-        return false;
-      }
+
+      if (!googleEmail.endsWith("@gmail.com")) return false;
 
       await connectDB();
 
@@ -138,7 +128,8 @@ export const authOptions: NextAuthOptions = {
         user.name = existingUser.name;
         user.email = existingUser.email;
         user.image =
-          normalizeSessionImage(existingUser.image) || normalizeSessionImage(user.image);
+          normalizeSessionImage(existingUser.image) ||
+          normalizeSessionImage(user.image);
         user.reputationScore = existingUser.reputationScore ?? 100;
         user.upiId = existingUser.upiId;
         return true;
@@ -156,6 +147,7 @@ export const authOptions: NextAuthOptions = {
       user.image = normalizeSessionImage(createdUser.image);
       user.reputationScore = createdUser.reputationScore ?? 100;
       user.upiId = createdUser.upiId;
+
       return true;
     },
 
@@ -181,9 +173,11 @@ export const authOptions: NextAuthOptions = {
 
       if (trigger === "update" && session?.user) {
         const sessionUser = session.user as SessionUser;
+
         token.name = sessionUser.name ?? token.name;
         token.email = sessionUser.email ?? token.email;
-        token.image = normalizeSessionImage(sessionUser.image) ?? token.image;
+        token.image =
+          normalizeSessionImage(sessionUser.image) ?? token.image;
         token.upiId = sessionUser.upiId ?? token.upiId;
       }
 
@@ -203,5 +197,6 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
+
   secret: process.env.NEXTAUTH_SECRET,
 };

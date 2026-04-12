@@ -1,5 +1,12 @@
 import mongoose from "mongoose";
 
+interface IExpenseReceipt {
+  url: string;
+  publicId?: string;
+  uploadedBy: string;
+  uploadedAt: Date;
+}
+
 interface IExpense {
   groupId: mongoose.Types.ObjectId;
   title: string;
@@ -10,6 +17,11 @@ interface IExpense {
   participants?: string[];
   paymentMethod?: "UPI" | "Cash";
   billImage?: string;
+
+  // 🔥 Cloudinary uploads
+  receipts?: IExpenseReceipt[];
+
+  // 🧠 Validation result (ADDED)
   paymentProof?: {
     url: string;
     uploadedBy: string;
@@ -19,6 +31,7 @@ interface IExpense {
     validatedAt?: Date;
     detectedAmount?: number;
   };
+
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -56,7 +69,8 @@ const expenseSchema = new mongoose.Schema<IExpense>(
       type: [String],
       required: true,
       validate: {
-        validator: (value: string[]) => Array.isArray(value) && value.length > 0,
+        validator: (value: string[]) =>
+          Array.isArray(value) && value.length > 0,
         message: "splitAmong must contain at least one member id",
       },
     },
@@ -71,36 +85,40 @@ const expenseSchema = new mongoose.Schema<IExpense>(
     billImage: {
       type: String,
     },
+
+    // 🔥 Receipts
+    receipts: {
+      type: [
+        {
+          url: { type: String, required: true },
+          publicId: { type: String },
+          uploadedBy: { type: String, required: true },
+          uploadedAt: { type: Date, required: true },
+        },
+      ],
+      default: undefined,
+    },
+
+    // 🧠 Validation proof (ADDED)
     paymentProof: {
-      url: {
-        type: String,
-      },
-      uploadedBy: {
-        type: String,
-      },
-      uploadedAt: {
-        type: Date,
-      },
+      url: { type: String },
+      uploadedBy: { type: String },
+      uploadedAt: { type: Date },
       validationStatus: {
         type: String,
         enum: ["approved", "rejected"],
       },
-      validationReason: {
-        type: String,
-      },
-      validatedAt: {
-        type: Date,
-      },
-      detectedAmount: {
-        type: Number,
-      },
+      validationReason: { type: String },
+      validatedAt: { type: Date },
+      detectedAmount: { type: Number },
     },
   },
   { timestamps: true }
 );
 
 const Expense =
-  mongoose.models.Expense || mongoose.model<IExpense>("Expense", expenseSchema);
+  mongoose.models.Expense ||
+  mongoose.model<IExpense>("Expense", expenseSchema);
 
 export type { IExpense };
 export default Expense;

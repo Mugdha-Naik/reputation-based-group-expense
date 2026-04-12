@@ -89,7 +89,11 @@ export default function GroupDetailsPage() {
   const [receiptPreview, setReceiptPreview] = useState<{
     urls: string[];
     index: number;
+<<<<<<< HEAD
   } | null>(null)
+=======
+  } | null>(null);
+>>>>>>> 746265c1ba31b467ea768dbbec94b7906ae11d43
 
   useEffect(() => {
     if (status === "unauthenticated") {

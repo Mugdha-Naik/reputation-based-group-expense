@@ -1,3 +1,5 @@
+"use client";
+
 import { useMemo, useState } from "react";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -8,15 +10,21 @@ type SplitType = "Equal" | "Custom";
 interface AddExpenseModalProps {
   isOpen: boolean;
   onClose: () => void;
+  groupId: string; // ✅ added
+  members: { _id: string }[]; // ✅ added
 }
 
 export default function AddExpenseModal({
   isOpen,
   onClose,
+  groupId,
+  members,
 }: AddExpenseModalProps) {
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [splitType, setSplitType] = useState<SplitType>("Equal");
+
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const disabled = useMemo(
     () => !amount.trim() || !description.trim(),
@@ -24,6 +32,49 @@ export default function AddExpenseModal({
   );
 
   if (!isOpen) return null;
+
+  // convert to base64
+  const convertToBase64 = (file: File) => {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+    });
+  };
+
+  // submit handler
+  const handleSubmit = async () => {
+    try {
+      let imageBase64 = "";
+
+      if (selectedFile) {
+        imageBase64 = await convertToBase64(selectedFile);
+      }
+
+      await fetch("/api/expenses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          groupId, // ✅ dynamic
+          title: description,
+          amount: Number(amount),
+          paymentMethod: "UPI",
+
+          // ✅ FIXED
+          splitAmong: members.map((m) => m._id),
+
+          billImage: imageBase64,
+        }),
+      });
+
+      onClose();
+    } catch (err) {
+      console.error("Error adding expense:", err);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-md">
@@ -43,6 +94,7 @@ export default function AddExpenseModal({
           </div>
 
           <div className="space-y-5 px-6 py-6">
+            {/* Amount */}
             <div>
               <label className="block text-sm font-medium text-white">Amount</label>
               <input
@@ -53,6 +105,7 @@ export default function AddExpenseModal({
               />
             </div>
 
+            {/* Description */}
             <div>
               <label className="block text-sm font-medium text-white">Description</label>
               <input
@@ -63,6 +116,32 @@ export default function AddExpenseModal({
               />
             </div>
 
+            {/* File Upload */}
+            <div>
+              <label className="block text-sm font-medium text-white">
+                Upload Receipt
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  if (e.target.files?.[0]) {
+                    setSelectedFile(e.target.files[0]);
+                  }
+                }}
+                className="mt-2 text-sm text-white"
+              />
+
+              {selectedFile && (
+                <img
+                  src={URL.createObjectURL(selectedFile)}
+                  alt="Receipt preview"
+                  className="mt-3 w-24 h-24 object-cover rounded-lg border border-white/10"
+                />
+              )}
+            </div>
+
+            {/* Split Type */}
             <div>
               <p className="text-sm font-medium text-white">Split Type</p>
               <div className="mt-2 grid grid-cols-2 gap-3">
@@ -86,12 +165,13 @@ export default function AddExpenseModal({
               </div>
             </div>
 
+            {/* Buttons */}
             <div className="flex justify-end gap-3">
               <Button variant="secondary" onClick={onClose}>
                 Cancel
               </Button>
               <Button
-                onClick={onClose}
+                onClick={handleSubmit}
                 disabled={disabled}
                 className="min-w-36 bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500 text-slate-950"
               >
