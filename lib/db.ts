@@ -1,10 +1,10 @@
 import { connect } from "mongoose";
 
-const mongodburl = process.env.MONGODB_URL
+const mongodburl = process.env.MONGODB_URI ?? process.env.MONGODB_URL
 
 // check if mongodb url is given in .env
 if(!mongodburl){
-    throw new Error("mongodb url not found");
+    throw new Error("MongoDB connection string not found (set MONGODB_URI or MONGODB_URL).");
 }
 
 // check if connection with db already exists

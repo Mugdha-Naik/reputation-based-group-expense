@@ -6,6 +6,13 @@ import Expense from "@/models/Expense";
 import "@/models/user.model";
 import { NextResponse } from "next/server";
 
+type AggregatedExpense = {
+  title?: string;
+  amount?: number;
+  paidBy?: unknown;
+  createdAt?: string | Date;
+};
+
 export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -51,9 +58,9 @@ export async function GET(req: Request) {
       },
     ]);
 
-    const expensesByGroup: Record<string, any[]> = {};
-    for (const group of expenses) {
-      expensesByGroup[String(group._id)] = group.expenses;
+    const expensesByGroup: Record<string, AggregatedExpense[]> = {};
+    for (const group of expenses as Array<{ _id: unknown; expenses: AggregatedExpense[] }>) {
+      expensesByGroup[String(group._id)] = Array.isArray(group.expenses) ? group.expenses : [];
     }
 
     const enrichedGroups = groups.map((group) => {

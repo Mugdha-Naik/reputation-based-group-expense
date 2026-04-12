@@ -14,18 +14,11 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeMode>("night");
-
-  useEffect(() => {
-    const storedTheme =
-      typeof window !== "undefined" ? window.localStorage.getItem("app-theme") : null;
-    if (storedTheme === "day" || storedTheme === "night") {
-      setThemeState(storedTheme);
-      return;
-    }
-
-    setThemeState("night");
-  }, []);
+  const [theme, setThemeState] = useState<ThemeMode>(() => {
+    if (typeof window === "undefined") return "night";
+    const storedTheme = window.localStorage.getItem("app-theme");
+    return storedTheme === "day" || storedTheme === "night" ? storedTheme : "night";
+  });
 
   useEffect(() => {
     const root = document.documentElement;

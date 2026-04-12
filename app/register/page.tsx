@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { FcGoogle } from "react-icons/fc";
 import { signIn } from "next-auth/react";
 import CenteredCard from "@/components/layout/CenteredCard";
+import Badge from "@/components/ui/Badge";
+import Button from "@/components/ui/Button";
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -104,35 +106,42 @@ export default function Register() {
   };
 
   return (
-    <CenteredCard cardClassName="border-white p-6 sm:p-8">
-        <h1 className="text-2xl font-semibold text-center mb-6">
-          Create Account
-        </h1>
+    <CenteredCard
+      outerClassName="bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_30%),linear-gradient(135deg,#020617_0%,#0f172a_45%,#111827_100%)]"
+      cardClassName="text-white border-white/10 bg-white/6 backdrop-blur-xl shadow-[0_30px_90px_rgba(2,6,23,0.55)] p-6 sm:p-8 rounded-[32px]"
+    >
+        <div className="text-center">
+          <Badge variant="violet">Get Started</Badge>
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white">Create account</h1>
+          <p className="mt-3 text-sm text-slate-300">
+            Join your groups and keep settlement history in one place.
+          </p>
+        </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg text-red-400 text-sm">
+          <div className="mt-6 rounded-2xl border border-red-500/35 bg-red-500/10 p-4 text-sm text-red-200">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleRegister} className="space-y-5 sm:space-y-6">
+        <form onSubmit={handleRegister} className="mt-6 space-y-5 sm:space-y-6">
           <div>
-            <label className="block mb-1">Name</label>
+            <label className="block text-sm font-medium text-white">Name</label>
             <input
               type="text"
               placeholder="Enter name"
-              className="w-full bg-gray-900 border-b border-white outline-none py-2"
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/40"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </div>
 
           <div>
-            <label className="block mb-1">Email</label>
+            <label className="block text-sm font-medium text-white">Email</label>
             <input
               type="email"
               placeholder="Enter your Gmail address"
-              className="w-full bg-gray-900 border-b border-white outline-none py-2"
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/40"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -142,51 +151,52 @@ export default function Register() {
           </div>
 
           <div>
-            <label className="block mb-1">Password</label>
+            <label className="block text-sm font-medium text-white">Password</label>
             <input
               type="password"
               placeholder="Enter password"
-              className="w-full bg-gray-900 border-b border-white outline-none py-2"
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/40"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 bg-white text-black rounded-lg font-semibold hover:bg-gray-200 disabled:opacity-50"
-          >
+          <Button type="submit" disabled={loading} className="w-full py-3">
             {loading ? "Registering..." : "Register"}
-          </button>
+          </Button>
         </form>
 
         <div className="my-6 flex items-center gap-2">
-          <hr className="flex-grow border-gray-600" />
-          <span className="text-sm">OR</span>
-          <hr className="flex-grow border-gray-600" />
+          <hr className="flex-grow border-white/10" />
+          <span className="text-xs uppercase tracking-[0.18em] text-slate-400">OR</span>
+          <hr className="flex-grow border-white/10" />
         </div>
 
-        <button
+        <Button
           type="button"
           disabled={googleLoading}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-white py-2 text-black hover:bg-gray-200"
+          variant="secondary"
+          className="flex w-full items-center justify-center gap-2 py-3"
           onClick={handleGoogleRegister}
         >
           <FcGoogle />
           {googleLoading ? "Checking Google Sign-In..." : "Continue with Google"}
-        </button>
+        </Button>
 
         {!googleLoading && googleMessage && (
           <p className="mt-3 text-center text-xs text-gray-400">{googleMessage}</p>
         )}
 
-        <p
-          className="text-sm text-center mt-4 cursor-pointer text-blue-400"
-          onClick={() => router.push("/login")}
-        >
-          Already have an account? Login
-        </p>
+        <div className="mt-5 text-center text-sm text-slate-300">
+          <span>Already have an account? </span>
+          <button
+            type="button"
+            onClick={() => router.push("/login")}
+            className="font-semibold text-cyan-200 underline-offset-4 hover:underline"
+          >
+            Login
+          </button>
+        </div>
 
     </CenteredCard>
   );

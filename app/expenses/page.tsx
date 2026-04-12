@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PageContainer from "@/components/layout/PageContainer";
-import AddExpenseModal from '@/components/AddExpenseModal';
+
 
 function ExpensesRedirectContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,7 +28,6 @@ function ExpensesRedirectContent() {
         Add Expense
       </button>
 
-      <AddExpenseModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
 
       {!groupId ? (
         <PageContainer>

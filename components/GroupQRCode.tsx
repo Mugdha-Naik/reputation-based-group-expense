@@ -12,9 +12,10 @@ const GroupQRCode: React.FC<GroupQRCodeProps> = ({ groupId, size = 180 }) => {
   if (!groupId) return null;
 
   const appUrl =
+    (typeof window !== "undefined" ? window.location.origin : "") ||
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.NEXT_PUBLIC_BASE_URL ||
-    (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:3000");
+    "http://127.0.0.1:3000";
   const joinUrl = `${appUrl}/join/${groupId}`;
 
   return (

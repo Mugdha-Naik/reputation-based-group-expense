@@ -24,6 +24,8 @@ interface Expense {
   category?: string;
   amount: number;
   paidBy: string;
+  billImage?: string;
+  receipts?: { url: string }[];
   createdAt?: string;
 }
 
@@ -49,6 +51,7 @@ interface TimelineItem {
   amount: string;
   dateLabel: string;
   tone: "paid" | "pending" | "completed";
+  receiptUrls?: string[];
 }
 
 const formatCurrency = (amount: number) => `INR ${amount.toFixed(2)}`;
@@ -82,6 +85,10 @@ export default function GroupDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [groupName, setGroupName] = useState("");
   const [error, setError] = useState("");
+  const [receiptPreview, setReceiptPreview] = useState<{
+    urls: string[];
+    index: number;
+  } | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -206,6 +213,12 @@ export default function GroupDetailsPage() {
       amount: formatCurrency(expense.amount),
       dateLabel: formatCompactDate(expense.createdAt),
       tone: "paid",
+      receiptUrls: Array.from(
+        new Set([
+          ...(Array.isArray(expense.receipts) ? expense.receipts.map((item) => item.url) : []),
+          expense.billImage,
+        ])
+      ).filter((url): url is string => typeof url === "string" && url.trim().length > 0),
     }));
 
     const settlementItems: TimelineItem[] = settlements.map((settlement) => {
@@ -253,6 +266,14 @@ export default function GroupDetailsPage() {
             <div className="flex flex-wrap gap-3">
               <Button variant="secondary" onClick={() => router.back()}>
                 Back
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  router.push(`/trip/${encodeURIComponent(String(groupIdValue))}`)
+                }
+              >
+                Open Trip (Pay Now)
               </Button>
               <Button
                 onClick={() =>
@@ -525,6 +546,34 @@ export default function GroupDetailsPage() {
                                   : "Paid"}
                             </div>
                           </div>
+                          {item.receiptUrls && item.receiptUrls.length > 0 ? (
+                            <div className="mt-4">
+                              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                                Receipts
+                              </p>
+                              <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                                {item.receiptUrls.map((url, index) => (
+                                  <button
+                                    key={`${item.id}-receipt-${index}`}
+                                    type="button"
+                                    onClick={() =>
+                                      setReceiptPreview({ urls: item.receiptUrls || [], index })
+                                    }
+                                    className="shrink-0 rounded-2xl border border-white/10 bg-black/20 p-1.5 transition hover:border-white/20"
+                                    aria-label={`Open receipt ${index + 1}`}
+                                  >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={url}
+                                      alt={`Receipt ${index + 1}`}
+                                      className="h-14 w-14 rounded-xl object-cover"
+                                      loading="lazy"
+                                    />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
                           <div className="mt-4 flex items-center justify-between gap-3">
                             <p className="text-xl font-semibold text-white">{item.amount}</p>
                             <p className="text-sm text-slate-400">{item.dateLabel}</p>
@@ -576,6 +625,102 @@ export default function GroupDetailsPage() {
           </div>
         )}
       </div>
+
+      {receiptPreview ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md"
+          onClick={() => setReceiptPreview(null)}
+        >
+          <div
+            className="relative w-full max-w-3xl overflow-hidden rounded-[28px] border border-white/12 bg-slate-950/90 p-4 shadow-[0_28px_100px_rgba(2,6,23,0.55)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setReceiptPreview(null)}
+              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg text-slate-200 transition hover:bg-white/10 hover:text-white"
+              aria-label="Close receipt preview"
+            >
+              x
+            </button>
+            <div className="pt-10">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={receiptPreview.urls[receiptPreview.index]}
+                alt="Receipt preview"
+                className="max-h-[75vh] w-full rounded-2xl object-contain"
+              />
+              {receiptPreview.urls.length > 1 ? (
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:border-white/20 hover:bg-white/10"
+                    onClick={() =>
+                      setReceiptPreview((current) =>
+                        current
+                          ? {
+                              ...current,
+                              index:
+                                (current.index - 1 + current.urls.length) % current.urls.length,
+                            }
+                          : current
+                      )
+                    }
+                  >
+                    Prev
+                  </button>
+                  <p className="text-xs text-slate-300">
+                    {receiptPreview.index + 1} / {receiptPreview.urls.length}
+                  </p>
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:border-white/20 hover:bg-white/10"
+                    onClick={() =>
+                      setReceiptPreview((current) =>
+                        current
+                          ? { ...current, index: (current.index + 1) % current.urls.length }
+                          : current
+                      )
+                    }
+                  >
+                    Next
+                  </button>
+                </div>
+              ) : null}
+              {receiptPreview.urls.length > 1 ? (
+                <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                  {receiptPreview.urls.map((url, index) => {
+                    const active = index === receiptPreview.index;
+                    return (
+                      <button
+                        key={`receipt-preview-thumb-${index}`}
+                        type="button"
+                        onClick={() =>
+                          setReceiptPreview((current) => (current ? { ...current, index } : current))
+                        }
+                        className={`shrink-0 rounded-2xl border p-1.5 transition ${
+                          active
+                            ? "border-cyan-400/40 bg-cyan-500/10"
+                            : "border-white/10 bg-white/5 hover:border-white/20"
+                        }`}
+                        aria-label={`Select receipt ${index + 1}`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={url}
+                          alt={`Receipt thumbnail ${index + 1}`}
+                          className="h-12 w-12 rounded-xl object-cover"
+                          loading="lazy"
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </PageContainer>
   );
 }

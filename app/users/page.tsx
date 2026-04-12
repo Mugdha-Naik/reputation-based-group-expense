@@ -6,6 +6,8 @@ import { useSession } from "next-auth/react";
 import PageContainer from "@/components/layout/PageContainer";
 import ProfileMenu from "@/components/ProfileMenu";
 import UserReputationCard from "@/components/UserReputationCard";
+import Badge from "@/components/ui/Badge";
+import Button from "@/components/ui/Button";
 
 interface UserItem {
   _id: string;
@@ -58,47 +60,46 @@ export default function UsersPage() {
 
   if (loading || status === "loading") {
     return (
-      <PageContainer className="flex items-center justify-center">
-        <p className="text-sm text-gray-300">Loading users...</p>
+      <PageContainer className="flex items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_30%),linear-gradient(135deg,#020617_0%,#0f172a_45%,#111827_100%)]">
+        <p className="text-sm text-slate-300">Loading users...</p>
       </PageContainer>
     );
   }
 
   return (
-    <PageContainer>
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.18em] text-blue-300">Community View</p>
-            <h1 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">
-              User Reputation Board
-            </h1>
-            <p className="mt-2 text-sm text-gray-400">
-              See every registered user ranked by reputation score.
-            </p>
+    <PageContainer className="bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_30%),linear-gradient(135deg,#020617_0%,#0f172a_45%,#111827_100%)]">
+      <div className="mx-auto w-full max-w-4xl px-4 pb-10 sm:px-6">
+        <section className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/6 px-6 py-7 shadow-[0_30px_90px_rgba(2,6,23,0.45)] backdrop-blur-xl sm:px-8">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(34,211,238,0.16),_transparent_28%),radial-gradient(circle_at_bottom_left,_rgba(139,92,246,0.18),_transparent_24%)]" />
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <Badge variant="cyan">Community View</Badge>
+              <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+                Reputation Leaderboard
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
+                See every registered user ranked by reputation score.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button variant="secondary" onClick={() => router.push("/dashboard")}>
+                Dashboard
+              </Button>
+              <ProfileMenu />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => router.push("/dashboard")}
-              className="rounded-lg border border-gray-700 px-4 py-2 text-sm text-white hover:border-white"
-            >
-              Dashboard
-            </button>
-            <ProfileMenu />
-          </div>
-        </div>
+        </section>
 
         {error ? (
-          <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          <p className="mt-6 rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {error}
           </p>
         ) : users.length === 0 ? (
-          <div className="rounded-lg border border-gray-800 bg-gray-900 px-4 py-4 text-sm text-gray-400">
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/6 px-4 py-4 text-sm text-slate-300 backdrop-blur-xl">
             No users found yet.
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="mt-6 space-y-4">
             {users.map((user) => (
               <UserReputationCard
                 key={user._id}

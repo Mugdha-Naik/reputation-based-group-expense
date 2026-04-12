@@ -22,10 +22,10 @@ export default function UserReputationCard({
   const initial = name.charAt(0).toUpperCase() || "U";
 
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4">
+    <div className="rounded-[28px] border border-white/10 bg-slate-950/45 p-5 shadow-[0_24px_70px_rgba(2,6,23,0.35)] backdrop-blur-xl">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-white text-sm font-semibold text-black">
+          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white text-sm font-semibold text-black">
             {image ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={image} alt={name} className="h-full w-full object-cover" />
@@ -35,7 +35,7 @@ export default function UserReputationCard({
           </div>
           <div className="min-w-0">
             <p className="truncate text-base font-semibold text-white">{name}</p>
-            <p className="truncate text-sm text-gray-400">{email}</p>
+            <p className="truncate text-sm text-slate-300">{email}</p>
           </div>
         </div>
         <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone}`}>
@@ -46,9 +46,9 @@ export default function UserReputationCard({
         </div>
       </div>
 
-      <div className="mt-4 text-xs text-gray-500">
+      <div className="mt-4 text-xs text-slate-500">
         <p>Member since</p>
-        <p className="mt-1 text-sm text-gray-300">
+        <p className="mt-1 text-sm text-slate-200">
           {createdAt ? new Date(createdAt).toLocaleDateString() : "Recently"}
         </p>
       </div>
