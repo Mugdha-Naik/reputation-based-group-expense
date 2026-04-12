@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import connectDB from "@/lib/db";
 import Settlement from "@/models/Settlement";
 import User from "@/models/user.model";
+import Notification from "@/models/Notification";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { buildReputationSummary } from "@/lib/reputation";
@@ -93,6 +94,21 @@ export async function PATCH(req: NextRequest) {
     await settlement.save();
     await rebuildPendingSettlementsForGroup(settlement.groupId.toString());
 
+    const [debtorUserProfile, creditorUserProfile] = await Promise.all([
+      User.findById(settlement.fromUser).select("name receiptReputationDelta").lean(),
+      User.findById(settlement.toUser).select("name").lean(),
+    ]);
+
+    await Notification.create({
+      userId: settlement.toUser,
+      groupId: settlement.groupId,
+      settlementId: settlement._id,
+      type: "settlement_completed",
+      message: `${debtorUserProfile?.name || "A member"} marked a settlement of INR ${settlement.amount.toFixed(2)} as paid to ${creditorUserProfile?.name || "you"}.`,
+      link: `/trip/${settlement.groupId.toString()}`,
+      read: false,
+    });
+
     const debtorUserId = settlement.fromUser.toString();
     const [completedSettlements, pendingSettlements, completedAmountAgg, pendingAmountAgg] =
       await Promise.all([
@@ -117,13 +133,12 @@ export async function PATCH(req: NextRequest) {
     const completedAmount = completedAmountAgg[0]?.totalAmount ?? 0;
     const pendingAmount = pendingAmountAgg[0]?.totalAmount ?? 0;
 
-    const debtorUser = await User.findById(debtorUserId).select("receiptReputationDelta").lean();
     const reputationSummary = buildReputationSummary({
       completedSettlements,
       pendingSettlements,
       completedAmount,
       pendingAmount,
-      receiptReputationDelta: debtorUser?.receiptReputationDelta ?? 0,
+      receiptReputationDelta: debtorUserProfile?.receiptReputationDelta ?? 0,
     });
 
     await User.findByIdAndUpdate(debtorUserId, {

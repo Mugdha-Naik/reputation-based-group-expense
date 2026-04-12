@@ -9,11 +9,11 @@ interface BadgeProps {
 }
 
 const badgeStyles: Record<BadgeVariant, string> = {
-  cyan: "border-cyan-400/25 bg-cyan-400/12 text-cyan-200",
-  violet: "border-violet-400/25 bg-violet-400/12 text-violet-200",
-  emerald: "border-emerald-400/25 bg-emerald-400/12 text-emerald-200",
-  amber: "border-amber-400/25 bg-amber-400/12 text-amber-200",
-  slate: "border-white/10 bg-white/8 text-slate-200",
+  cyan: "border-cyan-400/30 bg-cyan-400/14 text-cyan-100",
+  violet: "border-violet-400/30 bg-violet-400/14 text-violet-100",
+  emerald: "border-emerald-400/30 bg-emerald-400/14 text-emerald-100",
+  amber: "border-amber-400/30 bg-amber-400/14 text-amber-100",
+  slate: "border-white/12 bg-white/6 text-slate-100",
 };
 
 export default function Badge({

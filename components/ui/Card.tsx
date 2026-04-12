@@ -9,8 +9,8 @@ export default function Card({ children, className = "" }: CardProps) {
   return (
     <div
       className={[
-        "rounded-[28px] border border-[var(--color-bg-secondary)] bg-[var(--color-card)] p-5",
-        "transition duration-300 hover:scale-[1.02] hover:border-[var(--color-accent-teal)]",
+        "rounded-[28px] border border-[var(--color-border)] bg-[var(--color-card)] p-5 shadow-[var(--shadow-surface)] backdrop-blur-xl",
+        "transition duration-300 hover:scale-[1.01] hover:border-[var(--color-border-strong)]",
         className,
       ].join(" ")}
     >

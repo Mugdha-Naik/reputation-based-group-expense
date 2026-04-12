@@ -43,15 +43,15 @@ export default function HomePage() {
   const primaryHref = isLoggedIn ? "/dashboard" : "/register";
   const primaryLabel =
     status === "loading" ? "Loading..." : isLoggedIn ? "Go to Dashboard" : "Get Started";
-  const pageClassName = "min-h-screen bg-black text-white";
-  const navButtonClassName = "rounded-full border border-gray-700 px-4 py-2 text-sm text-gray-200 transition hover:border-white hover:text-white";
-  const primaryNavClassName = "rounded-full bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-gray-200";
-  const logoSubtextClassName = "text-xs text-gray-400";
+  const pageClassName = "min-h-screen bg-[linear-gradient(180deg,#090c12_0%,#0d1320_46%,#121826_100%)] text-white";
+  const navButtonClassName = "rounded-full border border-[var(--color-border)] bg-white/5 px-4 py-2 text-sm text-slate-100 transition hover:border-[var(--color-border-strong)] hover:bg-white/8 hover:text-white";
+  const primaryNavClassName = "rounded-full border border-cyan-300/20 bg-gradient-to-r from-cyan-400 via-sky-500 to-violet-500 px-4 py-2 text-sm font-medium text-white transition hover:brightness-110";
+  const logoSubtextClassName = "text-xs text-slate-400";
 
   return (
     <main className={pageClassName}>
-      <section className="relative overflow-hidden border-b border-gray-900">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.16),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(34,197,94,0.12),_transparent_28%)]" />
+      <section className="relative overflow-hidden border-b border-white/6">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.16),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(16,185,129,0.22),_transparent_30%),radial-gradient(circle_at_bottom,_rgba(34,197,94,0.14),_transparent_40%)]" />
         <div className="relative mx-auto flex max-w-6xl flex-col px-4 py-6 sm:px-6 lg:px-8">
           <header className="flex items-center justify-between gap-4 py-2">
             <div>
@@ -78,23 +78,23 @@ export default function HomePage() {
                 Create groups, add expenses, see who owes whom, and settle payments with a flow your whole group can understand.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link href={primaryHref} className="rounded-xl bg-white px-5 py-3 text-center text-sm font-semibold text-black transition hover:bg-gray-200">
+                <Link href={primaryHref} className="rounded-xl border border-cyan-300/20 bg-gradient-to-r from-cyan-400 via-sky-500 to-violet-500 px-5 py-3 text-center text-sm font-semibold text-white transition hover:brightness-110">
                   {primaryLabel}
                 </Link>
-                <Link href="#how-it-works" className="rounded-xl border border-gray-700 px-5 py-3 text-center text-sm font-semibold text-white transition hover:border-white">
+                <Link href="#how-it-works" className="rounded-xl border border-[var(--color-border)] bg-white/5 px-5 py-3 text-center text-sm font-semibold text-white transition hover:border-[var(--color-border-strong)] hover:bg-white/8">
                   How It Works
                 </Link>
               </div>
               <div className="mt-8 grid gap-3 text-sm text-gray-300 sm:grid-cols-3">
-                <div className="rounded-xl border border-gray-800 bg-gray-950/80 p-4">
+                <div className="rounded-xl border border-[var(--color-border)] bg-[rgba(17,24,39,0.82)] p-4 shadow-[0_16px_36px_rgba(2,6,23,0.2)]">
                   <p className="text-2xl font-semibold text-white">Groups</p>
                   <p className="mt-1">Trips, roommates, events, clubs</p>
                 </div>
-                <div className="rounded-xl border border-gray-800 bg-gray-950/80 p-4">
+                <div className="rounded-xl border border-[var(--color-border)] bg-[rgba(17,24,39,0.82)] p-4 shadow-[0_16px_36px_rgba(2,6,23,0.2)]">
                   <p className="text-2xl font-semibold text-white">Settlements</p>
                   <p className="mt-1">Clear pending and completed payment flow</p>
                 </div>
-                <div className="rounded-xl border border-gray-800 bg-gray-950/80 p-4">
+                <div className="rounded-xl border border-[var(--color-border)] bg-[rgba(17,24,39,0.82)] p-4 shadow-[0_16px_36px_rgba(2,6,23,0.2)]">
                   <p className="text-2xl font-semibold text-white">Trust</p>
                   <p className="mt-1">Built around transparency and accountability</p>
                 </div>
@@ -102,9 +102,9 @@ export default function HomePage() {
             </div>
             <div className="relative">
               <div className="absolute -left-6 top-10 hidden h-28 w-28 rounded-full bg-blue-500/10 blur-3xl sm:block" />
-              <div className="absolute -right-6 bottom-0 hidden h-28 w-28 rounded-full bg-green-500/10 blur-3xl sm:block" />
-              <div className="relative rounded-[28px] border border-gray-800 bg-gray-950 p-4 shadow-2xl shadow-black/40 sm:p-5">
-                <div className="rounded-2xl border border-gray-800 bg-black p-4">
+              <div className="absolute -right-8 bottom-0 hidden h-44 w-44 rounded-full bg-emerald-400/18 blur-3xl sm:block" />
+              <div className="relative rounded-[28px] border border-[var(--color-border)] bg-[rgba(17,24,39,0.88)] p-4 shadow-[var(--shadow-surface)] sm:p-5">
+                <div className="rounded-2xl border border-[var(--color-border)] bg-[rgba(9,12,18,0.84)] p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-semibold text-white">Goa Trip 2026</p>
@@ -112,7 +112,7 @@ export default function HomePage() {
                     </div>
                     <span className="rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs text-green-300">Active</span>
                   </div>
-                  <div className="mt-4 rounded-xl border border-gray-800 bg-gray-950 p-4">
+                  <div className="mt-4 rounded-xl border border-[var(--color-border)] bg-[rgba(17,24,39,0.84)] p-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Next settlement</p>
@@ -121,7 +121,7 @@ export default function HomePage() {
                       <span className="rounded-lg bg-blue-500/15 px-3 py-2 text-xs font-medium text-blue-300">Pending</span>
                     </div>
                   </div>
-                  <div className="mt-4 rounded-xl border border-gray-800 bg-gray-950 p-4">
+                  <div className="mt-4 rounded-xl border border-[var(--color-border)] bg-[rgba(17,24,39,0.84)] p-4">
                     <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Balances</p>
                     <div className="mt-3 space-y-3">
                       {previewBalances.map((entry) => (
@@ -133,11 +133,11 @@ export default function HomePage() {
                     </div>
                   </div>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border border-gray-800 bg-gray-950 p-4">
+                    <div className="rounded-xl border border-[var(--color-border)] bg-[rgba(17,24,39,0.84)] p-4">
                       <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Invite</p>
                       <p className="mt-2 text-sm text-gray-200">Share a join link or QR so members can enter the group quickly.</p>
                     </div>
-                    <div className="rounded-xl border border-gray-800 bg-gray-950 p-4">
+                    <div className="rounded-xl border border-[var(--color-border)] bg-[rgba(17,24,39,0.84)] p-4">
                       <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Payment flow</p>
                       <p className="mt-2 text-sm text-gray-200">Mark settlements as paid and keep the group history visible.</p>
                     </div>
@@ -155,7 +155,7 @@ export default function HomePage() {
         </div>
         <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {steps.map((step, index) => (
-            <div key={step.title} className="rounded-2xl border border-gray-800 bg-gray-950 p-5">
+            <div key={step.title} className="rounded-2xl border border-[var(--color-border)] bg-[rgba(17,24,39,0.84)] p-5 shadow-[0_16px_40px_rgba(2,6,23,0.22)]">
               <p className="text-sm font-medium text-blue-300">0{index + 1}</p>
               <h3 className="mt-4 text-xl font-semibold text-white">{step.title}</h3>
               <p className="mt-3 text-sm leading-6 text-gray-400">{step.description}</p>
@@ -163,7 +163,7 @@ export default function HomePage() {
           ))}
         </div>
       </section>
-      <section className="border-y border-gray-900 bg-gray-950/60">
+      <section className="border-y border-white/6 bg-[rgba(13,19,32,0.5)]">
         <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.2em] text-green-300">Why this app</p>
@@ -172,7 +172,7 @@ export default function HomePage() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             {benefits.map((benefit) => (
-              <div key={benefit} className="rounded-2xl border border-gray-800 bg-black p-5 text-sm text-gray-200">{benefit}</div>
+              <div key={benefit} className="rounded-2xl border border-[var(--color-border)] bg-[rgba(12,18,29,0.84)] p-5 text-sm text-slate-200 shadow-[0_14px_32px_rgba(2,6,23,0.18)]">{benefit}</div>
             ))}
           </div>
         </div>
@@ -182,10 +182,10 @@ export default function HomePage() {
         <h2 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">Bring order to your next shared expense.</h2>
         <p className="mt-5 text-base leading-7 text-gray-300">Create your account, open a group, and let the app handle the messy part of who owes whom.</p>
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-          <Link href={primaryHref} className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-gray-200">
+          <Link href={primaryHref} className="rounded-xl border border-cyan-300/20 bg-gradient-to-r from-cyan-400 via-sky-500 to-violet-500 px-5 py-3 text-sm font-semibold text-white transition hover:brightness-110">
             {isLoggedIn ? "Open Dashboard" : "Create Your First Group"}
           </Link>
-          <Link href="/login" className="rounded-xl border border-gray-700 px-5 py-3 text-sm font-semibold text-white transition hover:border-white">Login to Continue</Link>
+          <Link href="/login" className="rounded-xl border border-[var(--color-border)] bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:border-[var(--color-border-strong)] hover:bg-white/8">Login to Continue</Link>
         </div>
       </section>
     </main>

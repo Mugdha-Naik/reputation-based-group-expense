@@ -54,15 +54,20 @@ export default function CreateGroupPage() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <CenteredCard cardClassName="rounded-lg text-center">Loading...</CenteredCard>
-      </div>
+      <CenteredCard
+        outerClassName="bg-[linear-gradient(180deg,#090c12_0%,#0d1320_46%,#121826_100%)]"
+        cardClassName="rounded-[28px] text-center"
+      >
+        Loading...
+      </CenteredCard>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black">
-      <CenteredCard cardClassName="rounded-lg">
+    <CenteredCard
+      outerClassName="bg-[linear-gradient(180deg,#090c12_0%,#0d1320_46%,#121826_100%)]"
+      cardClassName="rounded-[28px]"
+    >
         <h1 className="mb-4 text-xl font-bold text-white">Create Group</h1>
 
         {error && (
@@ -86,6 +91,5 @@ export default function CreateGroupPage() {
           {loading ? "Creating..." : "Create"}
         </button>
       </CenteredCard>
-    </div>
   );
 }

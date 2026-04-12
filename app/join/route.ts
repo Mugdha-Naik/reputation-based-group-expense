@@ -24,21 +24,24 @@ export async function POST(req: Request) {
 
   await connectDB();
 
-  const group = await Group.findById(groupId);
-  if (!group) {
+  const userObjectId = new mongoose.Types.ObjectId(session.user.id);
+
+  // 🔥 ATOMIC OPERATION (prevents duplicates)
+  const result = await Group.findOneAndUpdate(
+    { _id: groupId },
+    { $addToSet: { members: userObjectId } }, // ensures uniqueness
+    { new: true }
+  );
+
+  if (!result) {
     return NextResponse.json({ message: "Group not found" }, { status: 404 });
   }
 
-  const isAlreadyMember = group.members.some(
-    (member: mongoose.Types.ObjectId) => member.toString() === session.user.id
-  );
-
-  if (!isAlreadyMember) {
-    group.members.push(new mongoose.Types.ObjectId(session.user.id));
-    await group.save();
-  }
+  // Optional: detect if user was already present
+  const alreadyMember =
+    result.members.filter((m: mongoose.Types.ObjectId) => m.toString() === session.user.id).length > 1;
 
   return NextResponse.json({
-    message: isAlreadyMember ? "Already a member of this group" : "Joined group",
+    message: alreadyMember ? "Already a member of this group" : "Joined group",
   });
 }

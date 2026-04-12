@@ -106,7 +106,7 @@ export default function Register() {
   return (
     <CenteredCard
       outerClassName="bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_24%),radial-gradient(circle_at_right,_rgba(139,92,246,0.14),_transparent_22%),linear-gradient(180deg,#07111f_0%,#0f172a_48%,#111827_100%)]"
-      cardClassName="rounded-[30px] border border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.94),rgba(17,24,39,0.9))] p-7 text-white shadow-[0_24px_90px_rgba(2,6,23,0.5)] backdrop-blur-xl sm:p-9"
+      cardClassName="rounded-[30px] border border-[var(--color-border)] bg-[linear-gradient(145deg,rgba(17,24,39,0.96),rgba(20,30,46,0.94))] p-7 text-white shadow-[var(--shadow-surface)] backdrop-blur-xl sm:p-9"
     >
         <div className="mb-8 text-center">
           <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Get Started</p>
@@ -130,7 +130,7 @@ export default function Register() {
             <input
               type="text"
               placeholder="Enter name"
-              className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/40 focus:bg-slate-950"
+              className="w-full rounded-2xl border border-[var(--color-border)] bg-[rgba(9,12,18,0.58)] px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/40 focus:bg-[rgba(9,12,18,0.82)]"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -141,7 +141,7 @@ export default function Register() {
             <input
               type="email"
               placeholder="Enter your Gmail address"
-              className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/40 focus:bg-slate-950"
+              className="w-full rounded-2xl border border-[var(--color-border)] bg-[rgba(9,12,18,0.58)] px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/40 focus:bg-[rgba(9,12,18,0.82)]"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -155,7 +155,7 @@ export default function Register() {
             <input
               type="password"
               placeholder="Enter password"
-              className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/40 focus:bg-slate-950"
+              className="w-full rounded-2xl border border-[var(--color-border)] bg-[rgba(9,12,18,0.58)] px-4 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/40 focus:bg-[rgba(9,12,18,0.82)]"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -164,7 +164,7 @@ export default function Register() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-violet-500 px-5 py-3 font-semibold text-white shadow-[0_14px_34px_rgba(59,130,246,0.28)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_44px_rgba(99,102,241,0.34)] disabled:opacity-50"
+            className="w-full rounded-full border border-cyan-300/20 bg-gradient-to-r from-cyan-400 via-sky-500 to-violet-500 px-5 py-3 font-semibold text-white shadow-[0_14px_34px_rgba(59,130,246,0.28)] transition duration-300 hover:-translate-y-0.5 hover:brightness-110 hover:shadow-[0_18px_44px_rgba(99,102,241,0.34)] disabled:opacity-50"
           >
             {loading ? "Registering..." : "Register"}
           </button>
@@ -179,7 +179,7 @@ export default function Register() {
         <button
           type="button"
           disabled={googleLoading}
-          className="flex w-full items-center justify-center gap-3 rounded-full border border-white/12 bg-white/8 px-5 py-3 text-white transition hover:bg-white/12 disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-3 rounded-full border border-[var(--color-border)] bg-white/5 px-5 py-3 text-white transition hover:border-[var(--color-border-strong)] hover:bg-white/8 disabled:opacity-60"
           onClick={handleGoogleRegister}
         >
           <FcGoogle />

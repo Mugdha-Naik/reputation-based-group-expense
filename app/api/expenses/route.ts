@@ -210,6 +210,7 @@ export async function POST(request: NextRequest) {
           userId,
           groupId,
           expenseId: expense._id,
+          type: "expense_added" as const,
           message: `${payerName} added a new group expense. Open the trip to view updated balances.`,
           link: `/trip/${groupId}`,
           read: false,

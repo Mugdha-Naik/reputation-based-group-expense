@@ -19,13 +19,15 @@ const GroupQRCode: React.FC<GroupQRCodeProps> = ({ groupId, size = 180 }) => {
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <QRCodeSVG
-        value={joinUrl}
-        size={size}
-        bgColor="transparent"
-        fgColor="#E2E8F0"
-        includeMargin
-      />
+      <div className="rounded-[28px] border border-white/12 bg-[rgba(17,24,39,0.92)] p-4 shadow-[0_18px_45px_rgba(2,6,23,0.28)]">
+        <QRCodeSVG
+          value={joinUrl}
+          size={size}
+          bgColor="#F8FAFC"
+          fgColor="#0F172A"
+          includeMargin
+        />
+      </div>
       <div className="text-center text-xs break-all text-slate-300">{joinUrl}</div>
     </div>
   );

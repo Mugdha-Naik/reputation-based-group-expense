@@ -168,12 +168,12 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <PageContainer className="bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),_transparent_24%),radial-gradient(circle_at_right,_rgba(139,92,246,0.12),_transparent_22%),linear-gradient(180deg,#07111f_0%,#0f172a_48%,#111827_100%)] text-white">
+    <PageContainer className="bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_24%),radial-gradient(circle_at_right,_rgba(139,92,246,0.16),_transparent_22%),radial-gradient(circle_at_bottom_left,_rgba(16,185,129,0.14),_transparent_24%),linear-gradient(180deg,#07111f_0%,#0f172a_48%,#111827_100%)] text-white">
       <div className="mx-auto max-w-[920px]">
-        <section className="relative overflow-hidden rounded-[36px] border border-white/10 bg-white/6 px-6 py-6 shadow-[0_24px_90px_rgba(2,6,23,0.36)] backdrop-blur-xl sm:px-8 sm:py-8">
+        <section className="relative overflow-hidden rounded-[36px] border border-white/10 bg-[linear-gradient(135deg,rgba(15,23,42,0.84),rgba(22,32,52,0.88))] px-6 py-6 shadow-[0_24px_90px_rgba(2,6,23,0.36)] backdrop-blur-xl sm:px-8 sm:py-8">
           <div className={isDayMode
             ? "absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(37,99,235,0.10),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(37,99,235,0.08),_transparent_22%)]"
-            : "absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.18),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(139,92,246,0.15),_transparent_22%)]"} />
+            : "absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.2),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(139,92,246,0.18),_transparent_22%),radial-gradient(circle_at_right,_rgba(16,185,129,0.12),_transparent_26%)]"} />
           <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className={isDayMode ? "text-3xl font-semibold tracking-tight text-[var(--color-text)] sm:text-4xl" : "text-3xl font-semibold tracking-tight text-white sm:text-4xl"}>
@@ -185,7 +185,7 @@ export default function Dashboard() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-[28px] border border-white/12 bg-slate-950/35 px-4 py-3 shadow-[0_12px_36px_rgba(15,23,42,0.28)]">
+              <div className="rounded-[28px] border border-cyan-300/16 bg-[linear-gradient(135deg,rgba(15,23,42,0.62),rgba(22,32,52,0.68))] px-4 py-3 shadow-[0_12px_36px_rgba(15,23,42,0.28)]">
                 {reputationLoading ? (
                   <div className="flex items-center gap-3 animate-pulse">
                     <div className={isDayMode ? "h-16 w-16 rounded-full bg-[var(--color-bg)]" : "h-16 w-16 rounded-full bg-slate-800"} />
@@ -212,7 +212,7 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={() => router.push("/users")}
-                className="rounded-full border border-white/12 bg-white/8 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/12"
+                className="rounded-full border border-violet-300/16 bg-violet-400/10 px-4 py-3 text-sm font-medium text-white transition hover:bg-violet-400/14"
               >
                 Users
               </button>
@@ -248,10 +248,10 @@ export default function Dashboard() {
 
         {!groupsLoading && (
           <section className="mt-8 grid gap-4 md:grid-cols-3">
-            <div className="group rounded-full border border-white/10 bg-white/7 px-5 py-4 shadow-[0_12px_40px_rgba(2,6,23,0.22)] backdrop-blur-xl transition duration-300 hover:scale-[1.02] hover:border-blue-400/25 hover:shadow-[0_16px_50px_rgba(59,130,246,0.16)]">
+            <div className="group rounded-full border border-blue-300/14 bg-[linear-gradient(135deg,rgba(17,24,39,0.78),rgba(23,37,64,0.88))] px-5 py-4 shadow-[0_12px_40px_rgba(2,6,23,0.22)] backdrop-blur-xl transition duration-300 hover:scale-[1.02] hover:border-blue-400/25 hover:shadow-[0_16px_50px_rgba(59,130,246,0.16)]">
   <div className="flex items-center gap-4">
 
-    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-500/16 text-lg">
+    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-400/20 text-lg text-blue-100 shadow-[0_0_24px_rgba(96,165,250,0.16)]">
       G
     </div>
 
@@ -267,10 +267,10 @@ export default function Dashboard() {
   </div>
 </div>
 
-            <div className="group rounded-full border border-white/10 bg-white/7 px-5 py-4 shadow-[0_12px_40px_rgba(2,6,23,0.22)] backdrop-blur-xl transition duration-300 hover:scale-[1.02] hover:border-violet-400/25 hover:shadow-[0_16px_50px_rgba(139,92,246,0.16)]">
+            <div className="group rounded-full border border-violet-300/14 bg-[linear-gradient(135deg,rgba(17,24,39,0.78),rgba(40,24,58,0.86))] px-5 py-4 shadow-[0_12px_40px_rgba(2,6,23,0.22)] backdrop-blur-xl transition duration-300 hover:scale-[1.02] hover:border-violet-400/25 hover:shadow-[0_16px_50px_rgba(139,92,246,0.16)]">
   <div className="flex items-center gap-4">
     
-    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-violet-500/16 text-lg">
+    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-violet-400/20 text-lg text-violet-100 shadow-[0_0_24px_rgba(167,139,250,0.16)]">
       R
     </div>
 
@@ -286,10 +286,10 @@ export default function Dashboard() {
   </div>
 </div>
 
-            <div className="group rounded-full border border-white/10 bg-white/7 px-5 py-4 shadow-[0_12px_40px_rgba(2,6,23,0.22)] backdrop-blur-xl transition duration-300 hover:scale-[1.02] hover:border-sky-400/25 hover:shadow-[0_16px_50px_rgba(96,165,250,0.16)]">
+            <div className="group rounded-full border border-emerald-300/14 bg-[linear-gradient(135deg,rgba(17,24,39,0.78),rgba(17,49,46,0.84))] px-5 py-4 shadow-[0_12px_40px_rgba(2,6,23,0.22)] backdrop-blur-xl transition duration-300 hover:scale-[1.02] hover:border-emerald-400/25 hover:shadow-[0_16px_50px_rgba(16,185,129,0.16)]">
   <div className="flex items-center gap-4">
 
-    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-sky-500/16 text-lg">
+    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-400/20 text-lg text-emerald-100 shadow-[0_0_24px_rgba(52,211,153,0.16)]">
       S
     </div>
 
@@ -342,11 +342,11 @@ export default function Dashboard() {
                   key={group._id}
                   className={isDayMode
                     ? "group relative overflow-hidden rounded-[22px] border border-[#D1D5DB] bg-gradient-to-br from-[var(--color-accent-blue)]/10 via-white/80 to-violet-200/30 p-3.5 text-left shadow-[0_8px_32px_rgba(37,99,235,0.06)] transition duration-300 hover:-translate-y-1 hover:border-[var(--color-accent-blue)]"
-                    : "group relative overflow-hidden rounded-[22px] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.07),rgba(255,255,255,0.04))] p-3.5 text-left shadow-[0_18px_65px_rgba(2,6,23,0.26)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-white/16 hover:shadow-[0_22px_80px_rgba(59,130,246,0.18)]"}
+                    : "group relative overflow-hidden rounded-[22px] border border-white/10 bg-[linear-gradient(145deg,rgba(18,25,40,0.9),rgba(24,34,54,0.88))] p-3.5 text-left shadow-[0_18px_65px_rgba(2,6,23,0.26)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-white/16 hover:shadow-[0_22px_80px_rgba(59,130,246,0.18)]"}
                 >
                   <div className={isDayMode
                     ? "absolute inset-0 bg-gradient-to-br from-[var(--color-accent-blue)]/10 via-white/80 to-violet-200/30 opacity-90 transition duration-300 group-hover:scale-105 group-hover:opacity-100"
-                    : "absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.14),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(139,92,246,0.12),_transparent_22%)] opacity-80 transition duration-300 group-hover:scale-105 group-hover:opacity-100"}
+                    : "absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(96,165,250,0.16),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(139,92,246,0.14),_transparent_22%),radial-gradient(circle_at_bottom_left,_rgba(16,185,129,0.12),_transparent_24%)] opacity-85 transition duration-300 group-hover:scale-105 group-hover:opacity-100"}
                   />
                   <div
                     className="relative cursor-pointer"
@@ -421,13 +421,13 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    <div className="mt-3 rounded-[16px] border border-white/8 bg-slate-950/28 px-3 py-1.5">
+                    <div className="mt-3 rounded-[16px] border border-white/8 bg-[linear-gradient(135deg,rgba(15,23,42,0.54),rgba(21,33,55,0.62))] px-3 py-1.5">
                       <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Last Activity</p>
                       <p className="mt-1 text-[13px] text-slate-200">{getLastActivity(group)}</p>
                     </div>
 
                     <div className="mt-3 h-[3px] overflow-hidden rounded-full bg-white/8">
-                      <div className="h-full w-full animate-pulse bg-gradient-to-r from-blue-400/40 via-violet-400/80 to-blue-400/40" />
+                      <div className="h-full w-full animate-pulse bg-gradient-to-r from-blue-400/40 via-violet-400/80 to-emerald-400/45" />
                     </div>
 
                     <div className="mt-3 flex items-center justify-between">
@@ -444,7 +444,7 @@ export default function Dashboard() {
                             event.stopPropagation();
                             setQrGroup(group);
                           }}
-                          className="rounded-full border border-white/15 bg-slate-950/60 px-3 py-1.5 text-xs font-medium text-slate-100 backdrop-blur-md transition hover:border-blue-300/40 hover:bg-blue-500/20 hover:text-white"
+                          className="rounded-full border border-white/15 bg-[linear-gradient(135deg,rgba(15,23,42,0.72),rgba(21,33,55,0.7))] px-3 py-1.5 text-xs font-medium text-slate-100 backdrop-blur-md transition hover:border-blue-300/40 hover:bg-blue-500/20 hover:text-white"
                         >
                           QR Code
                         </button>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { FcGoogle } from "react-icons/fc";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import CenteredCard from "@/components/layout/CenteredCard";
 
@@ -16,6 +16,8 @@ export default function Login() {
   const [googleMessage, setGoogleMessage] = useState("");
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTarget = searchParams.get("redirect") || "/dashboard";
 
   useEffect(() => {
     const checkGoogleAuth = async () => {
@@ -62,7 +64,7 @@ export default function Login() {
     if (result?.error) {
       setError(result.error);
     } else {
-      router.push("/dashboard");
+      router.push(redirectTarget);
     }
 
     setLoading(false);
@@ -79,13 +81,13 @@ export default function Login() {
       return;
     }
 
-    await signIn("google", { callbackUrl: "/dashboard" });
+    await signIn("google", { callbackUrl: redirectTarget });
   };
 
   return (
     <CenteredCard
       outerClassName="bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_24%),radial-gradient(circle_at_right,_rgba(139,92,246,0.14),_transparent_22%),linear-gradient(180deg,#07111f_0%,#0f172a_48%,#111827_100%)]"
-      cardClassName="rounded-[30px] border border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.94),rgba(17,24,39,0.9))] p-7 text-white shadow-[0_24px_90px_rgba(2,6,23,0.5)] backdrop-blur-xl sm:p-9"
+      cardClassName="rounded-[30px] border border-[var(--color-border)] bg-[linear-gradient(145deg,rgba(17,24,39,0.96),rgba(20,30,46,0.94))] p-7 text-white shadow-[var(--shadow-surface)] backdrop-blur-xl sm:p-9"
     >
         <div className="mb-8 text-center">
           <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Welcome Back</p>
@@ -106,7 +108,7 @@ export default function Login() {
             <label className="mb-2 block text-sm font-medium text-slate-200">Email</label>
             <input
               type="email"
-              className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-400/40 focus:bg-slate-950"
+              className="w-full rounded-2xl border border-[var(--color-border)] bg-[rgba(9,12,18,0.58)] px-4 py-3 text-white outline-none transition focus:border-cyan-400/40 focus:bg-[rgba(9,12,18,0.82)]"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -116,7 +118,7 @@ export default function Login() {
             <label className="mb-2 block text-sm font-medium text-slate-200">Password</label>
             <input
               type="password"
-              className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-400/40 focus:bg-slate-950"
+              className="w-full rounded-2xl border border-[var(--color-border)] bg-[rgba(9,12,18,0.58)] px-4 py-3 text-white outline-none transition focus:border-cyan-400/40 focus:bg-[rgba(9,12,18,0.82)]"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -125,7 +127,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-full bg-gradient-to-r from-blue-500 via-sky-500 to-violet-500 px-5 py-3 font-semibold text-white shadow-[0_14px_34px_rgba(59,130,246,0.28)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_44px_rgba(99,102,241,0.34)] disabled:opacity-50"
+            className="w-full rounded-full border border-cyan-300/20 bg-gradient-to-r from-cyan-400 via-sky-500 to-violet-500 px-5 py-3 font-semibold text-white shadow-[0_14px_34px_rgba(59,130,246,0.28)] transition duration-300 hover:-translate-y-0.5 hover:brightness-110 hover:shadow-[0_18px_44px_rgba(99,102,241,0.34)] disabled:opacity-50"
           >
             {loading ? "Logging in..." : "Login"}
           </button>
@@ -147,7 +149,7 @@ export default function Login() {
         <button
           type="button"
           disabled={googleLoading}
-          className="flex w-full items-center justify-center gap-3 rounded-full border border-white/12 bg-white/8 px-5 py-3 text-white transition hover:bg-white/12 disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-3 rounded-full border border-[var(--color-border)] bg-white/5 px-5 py-3 text-white transition hover:border-[var(--color-border-strong)] hover:bg-white/8 disabled:opacity-60"
           onClick={handleGoogleLogin}
         >
           <FcGoogle />

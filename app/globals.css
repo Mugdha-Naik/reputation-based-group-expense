@@ -1,7 +1,78 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --color-bg: #090c12;
+  --color-bg-elevated: #0f1520;
+  --color-bg-secondary: #1b2433;
+  --color-card: rgba(17, 24, 39, 0.82);
+  --color-card-strong: rgba(21, 30, 46, 0.94);
+  --color-text: #f6f8fc;
+  --color-text-secondary: #b2bfd3;
+  --color-text-muted: #8090aa;
+  --color-border: rgba(148, 163, 184, 0.2);
+  --color-border-strong: rgba(96, 165, 250, 0.26);
+  --color-accent-teal: #2dd4bf;
+  --color-accent-blue: #60a5fa;
+  --color-accent-violet: #8b5cf6;
+  --shadow-surface: 0 28px 90px rgba(2, 6, 23, 0.34);
+}
+
+html {
+  background:
+    radial-gradient(circle at top, rgba(56, 189, 248, 0.08), transparent 28%),
+    radial-gradient(circle at right, rgba(99, 102, 241, 0.08), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.16), transparent 26%),
+    radial-gradient(circle at bottom, rgba(34, 197, 94, 0.08), transparent 34%),
+    linear-gradient(180deg, #090c12 0%, #0d1320 44%, #121826 100%);
+}
+
+body {
+  min-height: 100vh;
+  background: transparent;
+  color: var(--color-text);
+}
+
+::selection {
+  background: rgba(96, 165, 250, 0.28);
+  color: #ffffff;
+}
+
+a,
+button,
+input,
+select,
+textarea {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+input,
+select,
+textarea {
+  color: var(--color-text);
+  caret-color: var(--color-accent-blue);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: rgba(96, 165, 250, 0.38);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.08);
+}
+
 input:-webkit-autofill {
-  -webkit-box-shadow: 0 0 0 1000px #1e293b inset !important;
+  -webkit-box-shadow: 0 0 0 1000px #121926 inset !important;
   -webkit-text-fill-color: white !important;
 }

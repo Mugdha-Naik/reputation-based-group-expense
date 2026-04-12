@@ -7,6 +7,12 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import PageContainer from "@/components/layout/PageContainer";
+import UPIPaymentQRCode from "@/components/UPIPaymentQRCode";
+import {
+  buildUpiPaymentUrl,
+  handleUPIPayment,
+  isMobileDevice,
+} from "@/lib/upi";
 
 type PaymentMethod = "UPI" | "Cash";
 type SettlementStatus = "pending" | "completed";
@@ -96,6 +102,8 @@ export default function TripPage() {
   const [cameraReady, setCameraReady] = useState(false);
   const [activeSettlement, setActiveSettlement] = useState<Settlement | null>(null);
   const [settlementMethod, setSettlementMethod] = useState<PaymentMethod>("UPI");
+  const [showUpiQrFallback, setShowUpiQrFallback] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState("");
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -222,9 +230,12 @@ export default function TripPage() {
     const payeeUpi =
       activeSettlement.toUser.upiId || getFallbackUpiId(activeSettlement.toUser.name);
 
-    return `upi://pay?pa=${encodeURIComponent(payeeUpi)}&pn=${encodeURIComponent(
-      activeSettlement.toUser.name
-    )}&am=${encodeURIComponent(formatAmount(activeSettlement.amount))}`;
+    return buildUpiPaymentUrl({
+      upiId: payeeUpi,
+      name: activeSettlement.toUser.name,
+      amount: activeSettlement.amount,
+      currency: "INR",
+    });
   }, [activeSettlement]);
 
   const activeSettlementUpiId = activeSettlement
@@ -465,6 +476,7 @@ export default function TripPage() {
     setSettlementMethod("UPI");
     setPaymentError("");
     setPaymentSuccess("");
+    setShowUpiQrFallback(!isMobileDevice());
     setActiveSettlement(settlement);
   }
 
@@ -472,6 +484,46 @@ export default function TripPage() {
     setActiveSettlement(null);
     setSettlementMethod("UPI");
     setPaymentError("");
+    setPaymentSuccess("");
+    setShowUpiQrFallback(false);
+    setCopyFeedback("");
+  }
+
+  function openUPIApp() {
+    if (!activeSettlement) {
+      setPaymentError("No active settlement selected.");
+      return;
+    }
+
+    const payeeUpi =
+      activeSettlement.toUser.upiId || getFallbackUpiId(activeSettlement.toUser.name);
+
+    const paymentAttempt = handleUPIPayment({
+      upiId: payeeUpi,
+      name: activeSettlement.toUser.name,
+      amount: activeSettlement.amount,
+      currency: "INR",
+    });
+
+    if (!paymentAttempt.opened) {
+      setPaymentError(paymentAttempt.message || "Unable to start UPI payment.");
+      if (paymentAttempt.reason === "desktop") {
+        setShowUpiQrFallback(true);
+      }
+      return;
+    }
+
+    setPaymentError("");
+    setShowUpiQrFallback(false);
+  }
+
+  async function copyPaymentValue(value: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopyFeedback(`${label} copied.`);
+    } catch {
+      setCopyFeedback(`Could not copy ${label.toLowerCase()}. Please copy it manually.`);
+    }
   }
 
   async function markSettlementPaid(settlementId: string) {
@@ -564,30 +616,33 @@ export default function TripPage() {
               <Badge variant="amber">{userOwes.length} pending</Badge>
             </div>
             <div className="mt-4 space-y-3">
-              {userOwes.map((settlement) => (
-                <div
-                  key={settlement._id}
-                  className="rounded-[24px] border border-white/8 bg-slate-950/55 p-4"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm text-slate-400">Pay</p>
-                      <p className="mt-1 text-base font-semibold text-white">
-                        {settlement.toUser.name}
-                      </p>
-                      <p className="mt-1 text-sm text-slate-400">Pending settlement</p>
-                    </div>
-                    <div className="sm:text-right">
-                      <p className="text-xl font-semibold text-white">
-                        INR {formatAmount(settlement.amount)}
-                      </p>
-                      <Button className="mt-3 w-full sm:w-auto" onClick={() => openPayModal(settlement)}>
-                        Pay Now
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+              {userOwes.map((settlement, index) => (
+  <div
+    key={`${settlement._id}-${index}`}
+    className="rounded-[24px] border border-white/8 bg-slate-950/55 p-4"
+  >
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-sm text-slate-400">Pay</p>
+        <p className="mt-1 text-base font-semibold text-white">
+          {settlement.toUser.name}
+        </p>
+        <p className="mt-1 text-sm text-slate-400">Pending settlement</p>
+      </div>
+      <div className="sm:text-right">
+        <p className="text-xl font-semibold text-white">
+          INR {formatAmount(settlement.amount)}
+        </p>
+        <Button
+          className="mt-3 w-full sm:w-auto"
+          onClick={() => openPayModal(settlement)}
+        >
+          Pay Now
+        </Button>
+      </div>
+    </div>
+  </div>
+))}
             </div>
           </Card>
         )}
@@ -601,26 +656,28 @@ export default function TripPage() {
               </p>
             ) : (
               <div className="mt-4 space-y-3">
-                {balances.map((entry) => {
-                  const color =
-                    entry.amount > 0
-                      ? "text-emerald-300"
-                      : entry.amount < 0
-                        ? "text-rose-300"
-                        : "text-slate-300";
-                  const prefix = entry.amount > 0 ? "+" : "";
-                  return (
-                    <div
-                      key={entry.memberId}
-                      className="flex items-center justify-between rounded-2xl border border-white/8 bg-slate-950/55 px-4 py-3 text-sm"
-                    >
-                      <span className="text-white">{entry.memberName}</span>
-                      <span className={color}>
-                        {prefix}INR {formatAmount(entry.amount)}
-                      </span>
-                    </div>
-                  );
-                })}
+                {balances.map((entry, index) => {
+  const color =
+    entry.amount > 0
+      ? "text-emerald-300"
+      : entry.amount < 0
+      ? "text-rose-300"
+      : "text-slate-300";
+
+  const prefix = entry.amount > 0 ? "+" : "";
+
+  return (
+    <div
+      key={`${entry.memberId}-${index}`}
+      className="flex items-center justify-between rounded-2xl border border-white/8 bg-slate-950/55 px-4 py-3 text-sm"
+    >
+      <span className="text-white">{entry.memberName}</span>
+      <span className={color}>
+        {prefix}INR {formatAmount(entry.amount)}
+      </span>
+    </div>
+  );
+})}
               </div>
             )}
           </Card>
@@ -634,29 +691,31 @@ export default function TripPage() {
               <p className="mt-3 text-sm text-slate-400">No settlements yet.</p>
             ) : (
               <div className="mt-4 space-y-3">
-                {settlements.map((settlement) => {
-                  const isDebtor = settlement.fromUser?._id === session?.user?.id;
-                  return (
-                    <div
-                      key={settlement._id}
-                      className="rounded-2xl border border-white/8 bg-slate-950/55 p-4 text-sm"
-                    >
-                      <p className="text-white">
-                        {settlement.fromUser.name} to {settlement.toUser.name} INR{" "}
-                        {formatAmount(settlement.amount)}
-                      </p>
-                      {settlement.status === "completed" ? (
-                        <p className="mt-2 text-emerald-300">Completed</p>
-                      ) : isDebtor ? (
-                        <Button className="mt-3" onClick={() => openPayModal(settlement)}>
-                          Pay Now
-                        </Button>
-                      ) : (
-                        <p className="mt-2 text-amber-300">Pending</p>
-                      )}
-                    </div>
-                  );
-                })}
+                {settlements.map((settlement, index) => {
+  const isDebtor = settlement.fromUser?._id === session?.user?.id;
+
+  return (
+    <div
+      key={`${settlement._id}-${settlement.fromUser?._id}-${settlement.toUser?._id}-${index}`}
+      className="rounded-2xl border border-white/8 bg-slate-950/55 p-4 text-sm"
+    >
+      <p className="text-white">
+        {settlement.fromUser.name} to {settlement.toUser.name} INR{" "}
+        {formatAmount(settlement.amount)}
+      </p>
+
+      {settlement.status === "completed" ? (
+        <p className="mt-2 text-emerald-300">Completed</p>
+      ) : isDebtor ? (
+        <Button className="mt-3" onClick={() => openPayModal(settlement)}>
+          Pay Now
+        </Button>
+      ) : (
+        <p className="mt-2 text-amber-300">Pending</p>
+      )}
+    </div>
+  );
+})}
               </div>
             )}
           </Card>
@@ -1057,12 +1116,73 @@ export default function TripPage() {
                   Open your UPI app to pay {activeSettlement.toUser.name}. After you complete the
                   payment, come back and mark it as paid.
                 </p>
-                <a
-                  href={upiLink}
-                  className="block w-full rounded-2xl bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500 px-4 py-3 text-center text-sm font-semibold text-slate-950 transition hover:brightness-110"
+                <Button
+                  className="w-full py-3"
+                  onClick={openUPIApp}
+                  type="button"
                 >
-                  Open UPI App
-                </a>
+                  {showUpiQrFallback ? "Open UPI App on Mobile" : "Open UPI App"}
+                </Button>
+                {showUpiQrFallback ? (
+                  <p className="text-xs text-slate-400">
+                    This device looks like desktop, so the best flow is to scan the QR from your
+                    phone or copy the payment details below.
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-400">
+                    Mobile devices will show the installed UPI apps chooser automatically if your
+                    browser supports UPI intents.
+                  </p>
+                )}
+
+                {showUpiQrFallback ? (
+                  <div className="rounded-[24px] border border-white/10 bg-slate-900/50 p-4">
+                    <p className="text-sm font-medium text-white">Desktop payment options</p>
+                    <p className="mt-2 text-sm text-slate-300">
+                      UPI deep links usually open only on mobile. Scan this QR with any UPI app on
+                      your phone, or use the quick copy buttons below.
+                    </p>
+                    <div className="mt-4">
+                      <UPIPaymentQRCode upiUrl={upiLink} />
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                      <Button
+                        variant="secondary"
+                        type="button"
+                        onClick={() => copyPaymentValue(activeSettlementUpiId, "UPI ID")}
+                      >
+                        Copy UPI ID
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        type="button"
+                        onClick={() =>
+                          copyPaymentValue(formatAmount(activeSettlement.amount), "Amount")
+                        }
+                      >
+                        Copy Amount
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        type="button"
+                        onClick={() => copyPaymentValue(upiLink, "UPI link")}
+                      >
+                        Copy UPI Link
+                      </Button>
+                    </div>
+                    <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/70 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">
+                        UPI Intent Link
+                      </p>
+                      <p className="mt-2 break-all text-xs text-slate-300">{upiLink}</p>
+                    </div>
+                    {copyFeedback ? (
+                      <p className="mt-3 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-xs text-cyan-100">
+                        {copyFeedback}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
                 <Button
                   variant="secondary"
                   className="w-full py-3"
