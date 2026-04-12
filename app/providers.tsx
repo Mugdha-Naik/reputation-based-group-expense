@@ -15,7 +15,10 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<ThemeMode>(() => {
-    if (typeof window === "undefined") return "night";
+    if (typeof window === "undefined") {
+      return "night";
+    }
+
     const storedTheme = window.localStorage.getItem("app-theme");
     return storedTheme === "day" || storedTheme === "night" ? storedTheme : "night";
   });

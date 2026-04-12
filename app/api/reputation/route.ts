@@ -43,11 +43,17 @@ export async function GET() {
     const completedAmount = completedAmountAgg[0]?.totalAmount ?? 0;
     const pendingAmount = pendingAmountAgg[0]?.totalAmount ?? 0;
 
+    const user = await User.findById(userId).select("receiptReputationDelta").lean();
+    if (!user) {
+      return NextResponse.json({ message: "User not found" }, { status: 404 });
+    }
+
     const summary = buildReputationSummary({
       completedSettlements,
       pendingSettlements,
       completedAmount,
       pendingAmount,
+      receiptReputationDelta: user.receiptReputationDelta ?? 0,
     });
 
     const updatedUser = await User.findByIdAndUpdate(

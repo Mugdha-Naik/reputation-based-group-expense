@@ -9,6 +9,7 @@ import { authOptions } from "@/lib/auth";
 import User from "@/models/user.model";
 import { rebuildPendingSettlementsForGroup } from "@/lib/rebuildSettlements";
 import cloudinary from "@/lib/cloudinary";
+import { validateReceiptImage } from "@/lib/receiptValidation";
 
 // =======================
 // POST /api/expenses
@@ -36,14 +37,12 @@ export async function POST(request: NextRequest) {
       billImages,
     } = body ?? {};
 
-    // ✅ Validate groupId FIRST
     if (!groupId || !mongoose.Types.ObjectId.isValid(groupId)) {
       return NextResponse.json({ message: "Invalid groupId" }, { status: 400 });
     }
 
     await connectDB();
 
-    // ✅ Check group
     const group = await Group.findById(groupId);
 
     if (!group) {
@@ -62,7 +61,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ✅ Resolve participants
     const resolvedParticipants = Array.isArray(participants)
       ? participants
       : splitAmong;
@@ -74,7 +72,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ✅ Resolve values
     const resolvedPaidBy =
       typeof paidBy === "string" && paidBy.trim()
         ? paidBy.trim()
@@ -99,17 +96,22 @@ export async function POST(request: NextRequest) {
     const uploadedReceipts: Array<{ url: string; publicId?: string }> = [];
 
     const normalizedBillImages: string[] = Array.isArray(billImages)
-      ? billImages.filter((value: unknown): value is string => typeof value === "string" && value.trim().length > 0)
+      ? billImages.filter(
+          (value: unknown): value is string =>
+            typeof value === "string" && value.trim().length > 0
+        )
       : typeof billImage === "string" && billImage.trim().length > 0
-        ? [billImage]
-        : [];
+      ? [billImage]
+      : [];
 
     if (normalizedBillImages.length > 0) {
       try {
         for (const image of normalizedBillImages) {
           const uploadResponse = await cloudinary.uploader.upload(image, {
             folder: "expense_proofs",
-            transformation: [{ width: 800, quality: "auto", fetch_format: "auto" }],
+            transformation: [
+              { width: 800, quality: "auto", fetch_format: "auto" },
+            ],
           });
 
           uploadedReceipts.push({
@@ -123,51 +125,65 @@ export async function POST(request: NextRequest) {
         const errorRecord = error as { http_code?: number } | null;
 
         if (errorRecord?.http_code === 401) {
-          const keySuffix =
-            typeof process.env.CLOUDINARY_API_KEY === "string"
-              ? process.env.CLOUDINARY_API_KEY.trim().slice(-4)
-              : "";
-          const cloudName =
-            typeof process.env.CLOUDINARY_CLOUD_NAME === "string"
-              ? process.env.CLOUDINARY_CLOUD_NAME.trim()
-              : "";
-
           return NextResponse.json(
             {
               message:
-                "Cloudinary authentication failed. Check CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.",
-              hint: cloudName
-                ? `Server is currently using CLOUDINARY_CLOUD_NAME='${cloudName}' and API key ending '${keySuffix}'. Restart the dev server after editing env vars.`
-                : "Restart the dev server after editing env vars.",
+                "Cloudinary authentication failed. Check CLOUDINARY env vars.",
             },
             { status: 500 }
           );
         }
 
-        return NextResponse.json({ message: "Image upload failed" }, { status: 500 });
+        return NextResponse.json(
+          { message: "Image upload failed" },
+          { status: 500 }
+        );
       }
+    }
+
+    // =======================
+    // 🧠 Receipt Validation
+    // =======================
+    if (uploadedReceipts.length > 0) {
+      const receiptUrl = uploadedReceipts[0].url;
+
+      const receiptValidation = await validateReceiptImage(
+        receiptUrl,
+        resolvedAmount
+      );
+
+      if (!receiptValidation.isReceipt || !receiptValidation.matchesClaimedAmount) {
+        await User.findByIdAndUpdate(resolvedPaidBy, {
+          $inc: {
+            receiptReputationDelta: -5,
+            rejectedReceiptCount: 1,
+          },
+        });
+
+        return NextResponse.json(
+          {
+            message: receiptValidation.matchesClaimedAmount
+              ? receiptValidation.reason
+              : `Receipt amount mismatch. ${receiptValidation.reason}`,
+            receiptValidation,
+          },
+          { status: 400 }
+        );
+      }
+
+      // reward for valid receipt
+      await User.findByIdAndUpdate(resolvedPaidBy, {
+        $inc: {
+          receiptReputationDelta: 3,
+          approvedReceiptCount: 1,
+        },
+      });
     }
 
     // =======================
     // ✅ Create expense
     // =======================
-    const expenseData: {
-      groupId: string;
-      title: string;
-      category?: string;
-      amount: number;
-      paidBy: string;
-      splitAmong: string[];
-      participants: string[];
-      paymentMethod?: "UPI" | "Cash";
-      billImage?: string;
-      receipts?: Array<{
-        url: string;
-        publicId?: string;
-        uploadedBy: string;
-        uploadedAt: Date;
-      }>;
-    } = {
+    const expenseData: any = {
       groupId,
       title: resolvedTitle,
       category: resolvedCategory,
@@ -189,15 +205,6 @@ export async function POST(request: NextRequest) {
     }
 
     const expense = await Expense.create(expenseData);
-
-    // =======================
-    // ⭐ Reputation update
-    // =======================
-    if (uploadedReceipts.length > 0) {
-      await User.findByIdAndUpdate(resolvedPaidBy, {
-        $inc: { reputationScore: 3 },
-      });
-    }
 
     // =======================
     // 🔁 Rebuild settlements

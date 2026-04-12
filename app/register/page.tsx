@@ -145,7 +145,7 @@ export default function Register() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
-            <p className="mt-2 text-xs text-gray-400">
+            <p className="mt-2 text-xs text-slate-400">
               Registration is currently limited to verified Gmail-style accounts.
             </p>
           </div>
@@ -184,7 +184,7 @@ export default function Register() {
         </Button>
 
         {!googleLoading && googleMessage && (
-          <p className="mt-3 text-center text-xs text-gray-400">{googleMessage}</p>
+          <p className="mt-3 text-center text-xs text-slate-400">{googleMessage}</p>
         )}
 
         <div className="mt-5 text-center text-sm text-slate-300">

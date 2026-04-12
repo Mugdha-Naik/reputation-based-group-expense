@@ -117,11 +117,13 @@ export async function PATCH(req: NextRequest) {
     const completedAmount = completedAmountAgg[0]?.totalAmount ?? 0;
     const pendingAmount = pendingAmountAgg[0]?.totalAmount ?? 0;
 
+    const debtorUser = await User.findById(debtorUserId).select("receiptReputationDelta").lean();
     const reputationSummary = buildReputationSummary({
       completedSettlements,
       pendingSettlements,
       completedAmount,
       pendingAmount,
+      receiptReputationDelta: debtorUser?.receiptReputationDelta ?? 0,
     });
 
     await User.findByIdAndUpdate(debtorUserId, {

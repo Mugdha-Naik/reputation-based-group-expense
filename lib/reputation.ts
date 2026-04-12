@@ -33,9 +33,13 @@ interface ReputationInput {
   completedAmount?: number;
   pendingAmount?: number;
 
+  // NEW SYSTEM
   validReceipts?: number;
   suspiciousReceipts?: number;
   fakeReceipts?: number;
+
+  // OLD SYSTEM (backward compatibility)
+  receiptReputationDelta?: number;
 
   onTimePayments?: number;
   delayedPayments?: number;
@@ -45,7 +49,7 @@ interface ReputationInput {
 interface ReputationSummary {
   score: number;
 
-  // breakdown (very useful)
+  // breakdown
   settlementScore: number;
   receiptScore: number;
   paymentScore: number;
@@ -79,6 +83,8 @@ export function buildReputationSummary({
   validReceipts = 0,
   suspiciousReceipts = 0,
   fakeReceipts = 0,
+
+  receiptReputationDelta = 0, // ✅ FIXED
 
   onTimePayments = 0,
   delayedPayments = 0,
@@ -115,9 +121,10 @@ export function buildReputationSummary({
   // 🔹 Receipt Score
   // =======================
   const receiptScore =
-    validReceipts * VALID_RECEIPT_REWARD -
-    suspiciousReceipts * SUSPICIOUS_RECEIPT_PENALTY -
-    fakeReceipts * FAKE_RECEIPT_PENALTY;
+    (validReceipts * VALID_RECEIPT_REWARD -
+      suspiciousReceipts * SUSPICIOUS_RECEIPT_PENALTY -
+      fakeReceipts * FAKE_RECEIPT_PENALTY) +
+    receiptReputationDelta;
 
   // =======================
   // 🔹 Payment Score

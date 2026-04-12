@@ -160,8 +160,10 @@ export default function Login() {
         </Button>
 
         {!googleLoading && googleMessage && (
-          <p className="mt-3 text-center text-xs text-slate-400">{googleMessage}</p>
-        )}
+  <p className="mt-3 text-center text-xs text-slate-400">
+    {googleMessage}
+  </p>
+)}
     </CenteredCard>
   );
 }

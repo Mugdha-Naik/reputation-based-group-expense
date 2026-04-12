@@ -1,3 +1,5 @@
+"use client";
+
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/db";
@@ -7,11 +9,25 @@ import "@/models/user.model";
 import { NextResponse } from "next/server";
 
 type AggregatedExpense = {
-  title?: string;
-  amount?: number;
-  paidBy?: unknown;
+  groupId: string;
+  title: string;
+  amount: number;
+  paidBy: string;
   createdAt?: string | Date;
 };
+
+interface PopulatedGroupMember {
+  _id: string;
+  name?: string;
+  image?: string;
+}
+
+interface GroupSummary {
+  _id: string;
+  createdAt?: string;
+  members?: PopulatedGroupMember[];
+  [key: string]: unknown;
+}
 
 export async function GET(req: Request) {
   try {
@@ -31,13 +47,13 @@ export async function GET(req: Request) {
     const groupLimit = parseInt(url.searchParams.get("groupLimit") || "10", 10);
     const expenseLimit = parseInt(url.searchParams.get("expenseLimit") || "10", 10);
 
-    const groups = await Group.find({
+    const groups = (await Group.find({
       members: session.user.id,
     })
       .populate("members", "name image")
       .sort({ createdAt: -1 })
       .limit(groupLimit)
-      .lean();
+      .lean()) as GroupSummary[];
 
     const groupIds = groups.map((group) => group._id);
 
@@ -59,23 +75,29 @@ export async function GET(req: Request) {
     ]);
 
     const expensesByGroup: Record<string, AggregatedExpense[]> = {};
+
     for (const group of expenses as Array<{ _id: unknown; expenses: AggregatedExpense[] }>) {
-      expensesByGroup[String(group._id)] = Array.isArray(group.expenses) ? group.expenses : [];
+      expensesByGroup[String(group._id)] = Array.isArray(group.expenses)
+        ? group.expenses
+        : [];
     }
 
     const enrichedGroups = groups.map((group) => {
       const groupExpenses = expensesByGroup[String(group._id)] || [];
       const latestExpense = groupExpenses[0];
-      const memberNameById = new Map(
-        ((group.members || []) as Array<{ _id: unknown; name?: string }>).map((member) => [
-          String(member._id),
-          member.name || "Member",
-        ])
-      );
+
       const totalExpense = groupExpenses.reduce(
-        (sum, expense) => sum + (typeof expense.amount === "number" ? expense.amount : 0),
+        (sum, expense) =>
+          sum + (typeof expense.amount === "number" ? expense.amount : 0),
         0
       );
+
+      const paidByName = latestExpense
+        ? group.members?.find(
+            (member) =>
+              String(member._id) === String(latestExpense.paidBy)
+          )?.name
+        : undefined;
 
       return {
         ...group,
@@ -85,10 +107,8 @@ export async function GET(req: Request) {
           ? {
               title: latestExpense.title,
               amount: latestExpense.amount,
-              paidBy:
-                memberNameById.get(String(latestExpense.paidBy)) ||
-                latestExpense.paidBy ||
-                "Member",
+              paidBy: latestExpense.paidBy,
+              paidByName,
               createdAt: latestExpense.createdAt,
             }
           : null,

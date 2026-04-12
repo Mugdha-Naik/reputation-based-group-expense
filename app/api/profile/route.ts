@@ -9,28 +9,28 @@ import { buildReputationSummary } from "@/lib/reputation";
 
 const MAX_PROFILE_IMAGE_LENGTH = 350_000;
 
-function sanitizeProfileImage(image: unknown): string | undefined {
-  if (typeof image !== "string") {
+function sanitizeProfileImage(value: unknown): string | undefined {
+  if (typeof value !== "string") {
     return undefined;
   }
 
-  const trimmed = image.trim();
-  if (!trimmed) {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
     return undefined;
   }
 
-  const isRemoteUrl = /^https?:\/\//i.test(trimmed);
-  const isDataImage = /^data:image\/(png|jpe?g|webp|gif);base64,/i.test(trimmed);
+  const isRemoteUrl = /^https?:\/\//i.test(trimmedValue);
+  const isDataImage = /^data:image\/(png|jpe?g|webp|gif);base64,/i.test(trimmedValue);
 
   if (!isRemoteUrl && !isDataImage) {
     throw new Error("Profile image must be a valid URL or image upload.");
   }
 
-  if (trimmed.length > MAX_PROFILE_IMAGE_LENGTH) {
+  if (trimmedValue.length > MAX_PROFILE_IMAGE_LENGTH) {
     throw new Error("Profile image is too large. Please choose a smaller image.");
   }
 
-  return trimmed;
+  return trimmedValue;
 }
 
 export async function GET() {
@@ -44,7 +44,7 @@ export async function GET() {
     await connectDB();
 
     const user = await User.findById(session.user.id)
-      .select("name email image upiId reputationScore createdAt")
+      .select("name email image upiId reputationScore createdAt receiptReputationDelta")
       .lean();
 
     const pendingSettlements = await Settlement.find({
@@ -80,6 +80,7 @@ export async function GET() {
         (total, settlement) => total + settlement.amount,
         0
       ),
+      receiptReputationDelta: user.receiptReputationDelta ?? 0,
     });
 
     const normalizedUser =
@@ -90,7 +91,7 @@ export async function GET() {
             { reputationScore: reputationSummary.score },
             { new: true }
           )
-            .select("name email image upiId reputationScore createdAt")
+            .select("name email image upiId reputationScore createdAt receiptReputationDelta")
             .lean();
 
     const pendingSummary = {
@@ -188,9 +189,11 @@ export async function PATCH(request: NextRequest) {
       { message: "Profile updated successfully", user: updatedUser },
       { status: 200 }
     );
-  } catch {
+  } catch (error) {
     return NextResponse.json(
-      { message: "Failed to update profile" },
+      {
+        message: error instanceof Error ? error.message : "Failed to update profile",
+      },
       { status: 500 }
     );
   }

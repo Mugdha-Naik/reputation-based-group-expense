@@ -9,7 +9,10 @@ interface Iuser {
     password?: string,
     createdAt?: Date,
     updatedAt?: Date,
-    reputationScore?: number
+    reputationScore?: number,
+    receiptReputationDelta?: number,
+    approvedReceiptCount?: number,
+    rejectedReceiptCount?: number
 }
 
 const userSchema = new mongoose.Schema<Iuser>({
@@ -35,9 +38,21 @@ const userSchema = new mongoose.Schema<Iuser>({
         type: String   
     },
     reputationScore: {
-    type: Number,
-    default: 100
-}
+      type: Number,
+      default: 100
+    },
+    receiptReputationDelta: {
+      type: Number,
+      default: 0,
+    },
+    approvedReceiptCount: {
+      type: Number,
+      default: 0,
+    },
+    rejectedReceiptCount: {
+      type: Number,
+      default: 0,
+    }
 
 }, 
 {

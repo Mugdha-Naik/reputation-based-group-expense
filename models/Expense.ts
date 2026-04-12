@@ -17,7 +17,21 @@ interface IExpense {
   participants?: string[];
   paymentMethod?: "UPI" | "Cash";
   billImage?: string;
+
+  // 🔥 Cloudinary uploads
   receipts?: IExpenseReceipt[];
+
+  // 🧠 Validation result (ADDED)
+  paymentProof?: {
+    url: string;
+    uploadedBy: string;
+    uploadedAt: Date;
+    validationStatus: "approved" | "rejected";
+    validationReason?: string;
+    validatedAt?: Date;
+    detectedAmount?: number;
+  };
+
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -55,7 +69,8 @@ const expenseSchema = new mongoose.Schema<IExpense>(
       type: [String],
       required: true,
       validate: {
-        validator: (value: string[]) => Array.isArray(value) && value.length > 0,
+        validator: (value: string[]) =>
+          Array.isArray(value) && value.length > 0,
         message: "splitAmong must contain at least one member id",
       },
     },
@@ -70,6 +85,8 @@ const expenseSchema = new mongoose.Schema<IExpense>(
     billImage: {
       type: String,
     },
+
+    // 🔥 Receipts
     receipts: {
       type: [
         {
@@ -81,12 +98,27 @@ const expenseSchema = new mongoose.Schema<IExpense>(
       ],
       default: undefined,
     },
+
+    // 🧠 Validation proof (ADDED)
+    paymentProof: {
+      url: { type: String },
+      uploadedBy: { type: String },
+      uploadedAt: { type: Date },
+      validationStatus: {
+        type: String,
+        enum: ["approved", "rejected"],
+      },
+      validationReason: { type: String },
+      validatedAt: { type: Date },
+      detectedAmount: { type: Number },
+    },
   },
   { timestamps: true }
 );
 
 const Expense =
-  mongoose.models.Expense || mongoose.model<IExpense>("Expense", expenseSchema);
+  mongoose.models.Expense ||
+  mongoose.model<IExpense>("Expense", expenseSchema);
 
 export type { IExpense };
 export default Expense;
