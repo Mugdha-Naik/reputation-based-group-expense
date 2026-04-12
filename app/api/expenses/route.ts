@@ -227,7 +227,12 @@ export async function POST(request: NextRequest) {
           userId,
           groupId,
           expenseId: expense._id,
+<<<<<<< HEAD
+          type: "expense_added" as const,
+          message: `${payerName} added a new group expense. Open the trip to view updated balances.`,
+=======
           message: `${payerName} added a new expense.`,
+>>>>>>> 746265c1ba31b467ea768dbbec94b7906ae11d43
           link: `/trip/${groupId}`,
           read: false,
         }))

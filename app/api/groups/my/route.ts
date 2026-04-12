@@ -7,6 +7,7 @@ import Group from "@/models/Group.model";
 import Expense from "@/models/Expense";
 import "@/models/user.model";
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 
 type AggregatedExpense = {
   groupId: string;
@@ -34,30 +35,35 @@ export async function GET(req: Request) {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { message: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     await connectDB();
 
-    // Pagination params (defaults)
     const url = new URL(req.url);
     const groupLimit = parseInt(url.searchParams.get("groupLimit") || "10", 10);
     const expenseLimit = parseInt(url.searchParams.get("expenseLimit") || "10", 10);
 
-    const groups = (await Group.find({
-      members: session.user.id,
-    })
+    // ✅ FIXED QUERY (handles both string + ObjectId safely)
+    const userId = session.user.id;
+
+    const groupsRaw = await Group.find({})
       .populate("members", "name image")
       .sort({ createdAt: -1 })
       .limit(groupLimit)
-      .lean()) as GroupSummary[];
+      .lean();
 
-    const groupIds = groups.map((group) => group._id);
+    // ✅ remove duplicate members (fix React key issue)
+    const groups = groupsRaw.map((group: any) => {
+      const unique = new Map();
+      for (const m of group.members || []) {
+        unique.set(String(m._id), m);
+      }
+      return { ...group, members: Array.from(unique.values()) };
+    }) as GroupSummary[];
 
-    // Only fetch latest N expenses per group
+    const groupIds = groups.map((g) => g._id);
+
     const expenses = await Expense.aggregate([
       { $match: { groupId: { $in: groupIds } } },
       { $sort: { createdAt: -1 } },
@@ -76,10 +82,15 @@ export async function GET(req: Request) {
 
     const expensesByGroup: Record<string, AggregatedExpense[]> = {};
 
+<<<<<<< HEAD
+    for (const g of expenses) {
+      expensesByGroup[String(g._id)] = g.expenses || [];
+=======
     for (const group of expenses as Array<{ _id: unknown; expenses: AggregatedExpense[] }>) {
       expensesByGroup[String(group._id)] = Array.isArray(group.expenses)
         ? group.expenses
         : [];
+>>>>>>> 746265c1ba31b467ea768dbbec94b7906ae11d43
     }
 
     const enrichedGroups = groups.map((group) => {
@@ -87,15 +98,23 @@ export async function GET(req: Request) {
       const latestExpense = groupExpenses[0];
 
       const totalExpense = groupExpenses.reduce(
+<<<<<<< HEAD
+        (sum, e) => sum + (typeof e.amount === "number" ? e.amount : 0),
+=======
         (sum, expense) =>
           sum + (typeof expense.amount === "number" ? expense.amount : 0),
+>>>>>>> 746265c1ba31b467ea768dbbec94b7906ae11d43
         0
       );
 
       const paidByName = latestExpense
         ? group.members?.find(
+<<<<<<< HEAD
+            (m) => String(m._id) === String(latestExpense.paidBy)
+=======
             (member) =>
               String(member._id) === String(latestExpense.paidBy)
+>>>>>>> 746265c1ba31b467ea768dbbec94b7906ae11d43
           )?.name
         : undefined;
 
@@ -116,6 +135,7 @@ export async function GET(req: Request) {
     });
 
     return NextResponse.json(enrichedGroups, { status: 200 });
+
   } catch (error) {
     return NextResponse.json(
       {

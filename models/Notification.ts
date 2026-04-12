@@ -3,7 +3,9 @@ import mongoose from "mongoose";
 interface INotification {
   userId: mongoose.Types.ObjectId;
   groupId: mongoose.Types.ObjectId;
-  expenseId: mongoose.Types.ObjectId;
+  expenseId?: mongoose.Types.ObjectId;
+  settlementId?: mongoose.Types.ObjectId;
+  type: "expense_added" | "settlement_completed";
   message: string;
   link?: string;
   read?: boolean;
@@ -28,6 +30,14 @@ const notificationSchema = new mongoose.Schema<INotification>(
     expenseId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Expense",
+    },
+    settlementId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Settlement",
+    },
+    type: {
+      type: String,
+      enum: ["expense_added", "settlement_completed"],
       required: true,
     },
     message: {

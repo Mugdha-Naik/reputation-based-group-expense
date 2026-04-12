@@ -50,6 +50,7 @@ interface TimelineItem {
   subtitle: string;
   amount: string;
   dateLabel: string;
+  sortTime: number;
   tone: "paid" | "pending" | "completed";
   receiptUrls?: string[];
 }
@@ -88,7 +89,11 @@ export default function GroupDetailsPage() {
   const [receiptPreview, setReceiptPreview] = useState<{
     urls: string[];
     index: number;
+<<<<<<< HEAD
+  } | null>(null)
+=======
   } | null>(null);
+>>>>>>> 746265c1ba31b467ea768dbbec94b7906ae11d43
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -212,6 +217,7 @@ export default function GroupDetailsPage() {
       subtitle: expense.category?.trim() || "Shared expense added",
       amount: formatCurrency(expense.amount),
       dateLabel: formatCompactDate(expense.createdAt),
+      sortTime: expense.createdAt ? new Date(expense.createdAt).getTime() : 0,
       tone: "paid",
       receiptUrls: Array.from(
         new Set([
@@ -231,12 +237,15 @@ export default function GroupDetailsPage() {
         subtitle: completed ? "Settlement completed" : "Settlement pending",
         amount: formatCurrency(settlement.amount),
         dateLabel: formatCompactDate(completed ? settlement.completedAt : settlement.createdAt),
+        sortTime: new Date(
+          completed ? settlement.completedAt || settlement.createdAt || 0 : settlement.createdAt || 0
+        ).getTime(),
         tone: completed ? "completed" : "pending",
       };
     });
 
     return [...settlementItems, ...expenseItems]
-      .sort((left, right) => right.dateLabel.localeCompare(left.dateLabel))
+      .sort((left, right) => right.sortTime - left.sortTime)
       .slice(0, 8);
   }, [expenses, memberNameById, settlements]);
 
@@ -352,9 +361,9 @@ export default function GroupDetailsPage() {
                   </div>
                 ) : (
                   <div className="mt-5 space-y-3">
-                    {pendingSettlements.map((settlement) => (
+                    {pendingSettlements.map((settlement, index) => (
                       <div
-                        key={settlement._id}
+                        key={`${settlement._id}-${index}`}
                         className="rounded-[24px] border border-white/10 bg-slate-950/55 p-4"
                       >
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -390,70 +399,91 @@ export default function GroupDetailsPage() {
                 </div>
 
                 <div className="mt-5 grid gap-4">
-                  {balances.map((entry) => {
-                    const reputationLabel = getReputationLabel(entry.reputationScore);
-                    const reputationTone = getReputationTone(entry.reputationScore);
-                    const level = getExperienceLevel(entry.reputationScore).label;
-                    const balanceTone =
-                      entry.amount > 0
-                        ? "text-emerald-300"
-                        : entry.amount < 0
-                          ? "text-amber-300"
-                          : "text-slate-200";
-                    const balanceLabel =
-                      entry.amount > 0
-                        ? "Should receive"
-                        : entry.amount < 0
-                          ? "Needs to pay"
-                          : "All settled";
+                  {balances.map((entry, index) => {
+  const reputationTone = getReputationTone(entry.reputationScore);
+  const reputationLabel = getReputationLabel(entry.reputationScore);
 
-                    return (
-                      <div
-                        key={entry.memberId}
-                        className="rounded-[26px] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.05),rgba(255,255,255,0.03))] p-5"
-                      >
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="flex min-w-0 items-center gap-3">
-                            {entry.avatar ? (
-                              <img
-                                src={entry.avatar}
-                                alt={entry.memberName}
-                                className="h-14 w-14 rounded-2xl object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400/20 to-violet-500/20 text-xl font-semibold text-white">
-                                {entry.memberName.charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                            <div className="min-w-0">
-                              <p className="truncate text-xl font-semibold text-white">{entry.memberName}</p>
-                              <p className="truncate text-sm text-slate-400">{entry.email}</p>
-                            </div>
-                          </div>
-                          <div className={`w-fit rounded-full border px-3 py-1 text-xs font-medium ${reputationTone}`}>
-                            {reputationLabel}
-                          </div>
-                        </div>
+  const balanceTone =
+    entry.amount > 0
+      ? "text-green-400"
+      : entry.amount < 0
+      ? "text-red-400"
+      : "text-slate-300";
 
-                        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                          <div className="rounded-2xl border border-white/8 bg-slate-950/45 p-3">
-                            <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Balance</p>
-                            <p className={`mt-2 text-lg font-semibold ${balanceTone}`}>
-                              {entry.amount === 0
-                                ? formatCurrency(0)
-                                : `${entry.amount > 0 ? "+" : "-"}${formatCurrency(Math.abs(entry.amount)).replace("INR ", "INR ")}`}
-                            </p>
-                            <p className="mt-1 text-xs text-slate-400">{balanceLabel}</p>
-                          </div>
-                          <div className="rounded-2xl border border-white/8 bg-slate-950/45 p-3">
-                            <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Reputation</p>
-                            <p className="mt-2 text-lg font-semibold text-white">{entry.reputationScore} XP</p>
-                            <p className="mt-1 text-xs text-slate-400">Level {level}</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+  const balanceLabel =
+    entry.amount > 0
+      ? "Gets back"
+      : entry.amount < 0
+      ? "Owes"
+      : "Settled";
+
+  const level = getExperienceLevel(entry.reputationScore);
+
+  return (
+    <div
+      key={`${entry.memberId}-${index}`}
+      className="rounded-[26px] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.05),rgba(255,255,255,0.03))] p-5"
+    >
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          {entry.avatar ? (
+            <img
+              src={entry.avatar}
+              alt={entry.memberName}
+              className="h-14 w-14 rounded-2xl object-cover"
+            />
+          ) : (
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400/20 to-violet-500/20 text-xl font-semibold text-white">
+              {entry.memberName.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="truncate text-xl font-semibold text-white">
+              {entry.memberName}
+            </p>
+            <p className="truncate text-sm text-slate-400">
+              {entry.email}
+            </p>
+          </div>
+        </div>
+
+        <div
+          className={`w-fit rounded-full border px-3 py-1 text-xs font-medium ${reputationTone}`}
+        >
+          {reputationLabel}
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-2xl border border-white/8 bg-slate-950/45 p-3">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+            Balance
+          </p>
+          <p className={`mt-2 text-lg font-semibold ${balanceTone}`}>
+            {entry.amount === 0
+              ? formatCurrency(0)
+              : `${entry.amount > 0 ? "+" : "-"}${formatCurrency(
+                  Math.abs(entry.amount)
+                )}`}
+          </p>
+          <p className="mt-1 text-xs text-slate-400">{balanceLabel}</p>
+        </div>
+
+        <div className="rounded-2xl border border-white/8 bg-slate-950/45 p-3">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+            Reputation
+          </p>
+          <p className="mt-2 text-lg font-semibold text-white">
+            {entry.reputationScore} XP
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
+            Level {level.label}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+})}
                 </div>
               </Card>
 
@@ -476,30 +506,38 @@ export default function GroupDetailsPage() {
                   </div>
                 ) : (
                   <div className="mt-5 space-y-4">
-                    {categorySummary.map((category) => {
-                      const percentage = totalExpense > 0 ? (category.amount / totalExpense) * 100 : 0;
-                      return (
-                        <div key={category.name} className="rounded-[24px] border border-white/10 bg-slate-950/45 p-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <p className="text-lg font-semibold text-white">{category.name}</p>
-                              <p className="mt-1 text-sm text-slate-400">
-                                {percentage.toFixed(0)}% of total group spend
-                              </p>
-                            </div>
-                            <p className="text-xl font-semibold text-cyan-200">
-                              {formatCurrency(category.amount)}
-                            </p>
-                          </div>
-                          <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/8">
-                            <div
-                              className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500"
-                              style={{ width: `${Math.max(8, percentage)}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {categorySummary.map((category, index) => {
+  const percentage =
+    totalExpense > 0 ? (category.amount / totalExpense) * 100 : 0;
+
+  return (
+    <div
+      key={`${category.name}-${index}`}
+      className="rounded-[24px] border border-white/10 bg-slate-950/45 p-4"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-lg font-semibold text-white">
+            {category.name}
+          </p>
+          <p className="mt-1 text-sm text-slate-400">
+            {percentage.toFixed(0)}% of total group spend
+          </p>
+        </div>
+        <p className="text-xl font-semibold text-cyan-200">
+          {formatCurrency(category.amount)}
+        </p>
+      </div>
+
+      <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/8">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500"
+          style={{ width: `${Math.max(8, percentage)}%` }}
+        />
+      </div>
+    </div>
+  );
+})}
                   </div>
                 )}
               </Card>
